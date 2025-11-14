@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LMS API Connection Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        .result {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            color: #4CAF50;
+        }
+        .error {
+            color: #f44336;
+        }
+        .status {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        .status.online {
+            background: #4CAF50;
+        }
+        .status.offline {
+            background: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔌 LMS API Connection Test</h1>
+        
+        <div class="test-section">
+            <h3><span class="status" id="status-api"></span>API Gateway Health</h3>
+            <button onclick="testAPIGateway()">Test API Gateway</button>
+            <button onclick="testAllServices()">Test All Services</button>
+            <div id="result-api" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3><span class="status" id="status-auth"></span>Authentication Test</h3>
+            <button onclick="testLogin()">Test Login (Admin)</button>
+            <button onclick="testRegister()">Test Register</button>
+            <button onclick="clearAuth()">Clear Auth</button>
+            <div id="result-auth" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3><span class="status" id="status-users"></span>User Service Test</h3>
+            <button onclick="testGetAdmins()">Get Admins</button>
+            <button onclick="testGetStudents()">Get Students</button>
+            <button onclick="testGetInstructors()">Get Instructors</button>
+            <div id="result-users" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3><span class="status" id="status-courses"></span>Course Service Test</h3>
+            <button onclick="testGetCourses()">Get Courses</button>
+            <button onclick="testCreateCourse()">Create Test Course</button>
+            <div id="result-courses" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Dashboard Data</h3>
+            <button onclick="testDashboard()">Get Dashboard Overview</button>
+            <div id="result-dashboard" class="result" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:1001/api';
+        
+        function setStatus(id, online) {
+            const element = document.getElementById(id);
+            element.className = `status ${online ? 'online' : 'offline'}`;
+        }
+
+        function showResult(id, data, isError = false) {
+            const element = document.getElementById(id);
+            element.style.display = 'block';
+            element.className = `result ${isError ? 'error' : 'success'}`;
+            element.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+        }
+
+        async function testAPIGateway() {
+            try {
+                const response = await fetch(`${API_URL.replace('/api', '')}/health`);
+                const data = await response.json();
+                setStatus('status-api', true);
+                showResult('result-api', data);
+            } catch (error) {
+                setStatus('status-api', false);
+                showResult('result-api', `Error: ${error.message}`, true);
+            }
+        }
+
+        async function testAllServices() {
+            const services = [1001, 1002, 1003, 1004, 1005, 1006, 1007];
+            const results = [];
+            
+            for (const port of services) {
+                try {
+                    const response = await fetch(`http://localhost:${port}/health`);
+                    const data = await response.json();
+                    results.push(`✅ Port ${port}: ${data.service || 'OK'}`);
+                } catch (error) {
+                    results.push(`❌ Port ${port}: OFFLINE`);
+                }
+            }
+            
+            showResult('result-api', results.join('\n'));
+        }
+
+        async function testLogin() {
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'admin@lms.com',
+                        password: 'Admin@123'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    localStorage.setItem('token', data.data.accessToken);
+                    localStorage.setItem('user', JSON.stringify(data.data.user));
+                    setStatus('status-auth', true);
+                    showResult('result-auth', {
+                        message: '✅ Login successful!',
+                        user: data.data.user,
+                        tokenPreview: data.data.accessToken.substring(0, 50) + '...'
+                    });
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                setStatus('status-auth', false);
+                showResult('result-auth', `Error: ${error.message}`, true);
+            }
+        }
+
+        async function testRegister() {
+            showResult('result-auth', 'Registration is disabled. Use admin panel to create users.');
+        }
+
+        function clearAuth() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            setStatus('status-auth', false);
+            showResult('result-auth', '✅ Auth data cleared');
+        }
+
+        async function testGetAdmins() {
+            await apiCall('/users/admins', 'result-users', 'status-users');
+        }
+
+        async function testGetStudents() {
+            await apiCall('/users/students', 'result-users', 'status-users');
+        }
+
+        async function testGetInstructors() {
+            await apiCall('/users/instructors', 'result-users', 'status-users');
+        }
+
+        async function testGetCourses() {
+            await apiCall('/courses', 'result-courses', 'status-courses');
+        }
+
+        async function testCreateCourse() {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    throw new Error('Please login first');
+                }
+
+                const courseData = {
+                    courseCode: 'TEST' + Date.now(),
+                    courseName: 'Test Course',
+                    description: 'This is a test course',
+                    credits: 3,
+                    level: 'beginner',
+                    prerequisites: []
+                };
+
+                const response = await fetch(`${API_URL}/courses`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(courseData)
+                });
+
+                const data = await response.json();
+                
+                if (data.success || response.ok) {
+                    setStatus('status-courses', true);
+                    showResult('result-courses', data);
+                } else {
+                    throw new Error(data.message || 'Failed to create course');
+                }
+            } catch (error) {
+                setStatus('status-courses', false);
+                showResult('result-courses', `Error: ${error.message}`, true);
+            }
+        }
+
+        async function testDashboard() {
+            await apiCall('/reports/dashboard/overview', 'result-dashboard');
+        }
+
+        async function apiCall(endpoint, resultId, statusId = null) {
+            try {
+                const token = localStorage.getItem('token');
+                const headers = { 'Content-Type': 'application/json' };
+                
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+
+                const response = await fetch(`${API_URL}${endpoint}`, { headers });
+                const data = await response.json();
+                
+                if (data.success || response.ok) {
+                    if (statusId) setStatus(statusId, true);
+                    showResult(resultId, data);
+                } else {
+                    throw new Error(data.message || 'Request failed');
+                }
+            } catch (error) {
+                if (statusId) setStatus(statusId, false);
+                showResult(resultId, `Error: ${error.message}`, true);
+            }
+        }
+
+        // Auto-test API on page load
+        window.onload = () => {
+            testAPIGateway();
+        };
+    </script>
+</body>
+</html>

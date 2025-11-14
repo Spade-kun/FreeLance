@@ -1,0 +1,174 @@
+{
+  "clientName": "Thunder Client",
+  "collectionName": "LMS API",
+  "collectionId": "lms-api-collection",
+  "dateExported": "2025-11-14",
+  "version": "1.0",
+  "folders": [
+    {
+      "id": "auth-folder",
+      "name": "Authentication",
+      "requests": []
+    },
+    {
+      "id": "users-folder",
+      "name": "Users",
+      "requests": []
+    },
+    {
+      "id": "courses-folder",
+      "name": "Courses",
+      "requests": []
+    },
+    {
+      "id": "content-folder",
+      "name": "Content",
+      "requests": []
+    }
+  ],
+  "requests": [
+    {
+      "id": "1",
+      "name": "Register User",
+      "url": "http://localhost:1001/api/auth/register",
+      "method": "POST",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"email\": \"test@lms.com\",\n  \"password\": \"Test@123\",\n  \"role\": \"admin\",\n  \"userId\": \"69171140c2e3b377f53dfa54\"\n}"
+      },
+      "folderId": "auth-folder"
+    },
+    {
+      "id": "2",
+      "name": "Login",
+      "url": "http://localhost:1001/api/auth/login",
+      "method": "POST",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"email\": \"admin@lms.com\",\n  \"password\": \"Admin@123\"\n}"
+      },
+      "folderId": "auth-folder"
+    },
+    {
+      "id": "3",
+      "name": "Create Admin",
+      "url": "http://localhost:1001/api/users/admins",
+      "method": "POST",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Admin\",\n  \"email\": \"admin2@lms.com\",\n  \"phone\": \"09123456789\",\n  \"permissions\": [\"manage_users\", \"manage_courses\", \"view_reports\"]\n}"
+      },
+      "folderId": "users-folder"
+    },
+    {
+      "id": "4",
+      "name": "Create Instructor",
+      "url": "http://localhost:1001/api/users/instructors",
+      "method": "POST",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"firstName\": \"Maria\",\n  \"lastName\": \"Santos\",\n  \"email\": \"maria@lms.com\",\n  \"phone\": \"09234567890\",\n  \"specialization\": \"Computer Science\",\n  \"qualifications\": [\n    {\n      \"degree\": \"PhD\",\n      \"field\": \"Computer Science\",\n      \"institution\": \"University of the Philippines\",\n      \"year\": 2020\n    }\n  ],\n  \"bio\": \"Experienced educator with 10 years in teaching\"\n}"
+      },
+      "folderId": "users-folder"
+    },
+    {
+      "id": "5",
+      "name": "Create Student",
+      "url": "http://localhost:1001/api/users/students",
+      "method": "POST",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"firstName\": \"Juan\",\n  \"lastName\": \"Dela Cruz\",\n  \"email\": \"juan2@student.lms.com\",\n  \"phone\": \"09345678901\",\n  \"studentId\": \"2024-00002\",\n  \"guardianName\": \"Pedro Dela Cruz\",\n  \"guardianContact\": \"09456789012\"\n}"
+      },
+      "folderId": "users-folder"
+    },
+    {
+      "id": "6",
+      "name": "Get All Admins",
+      "url": "http://localhost:1001/api/users/admins",
+      "method": "GET",
+      "headers": [],
+      "folderId": "users-folder"
+    },
+    {
+      "id": "7",
+      "name": "Create Course",
+      "url": "http://localhost:1001/api/courses",
+      "method": "POST",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"courseCode\": \"CS101\",\n  \"courseName\": \"Introduction to Programming\",\n  \"description\": \"Learn the fundamentals of programming using Python\",\n  \"credits\": 3,\n  \"level\": \"beginner\",\n  \"prerequisites\": []\n}"
+      },
+      "folderId": "courses-folder"
+    },
+    {
+      "id": "8",
+      "name": "Get All Courses",
+      "url": "http://localhost:1001/api/courses",
+      "method": "GET",
+      "headers": [],
+      "folderId": "courses-folder"
+    },
+    {
+      "id": "9",
+      "name": "Create Announcement",
+      "url": "http://localhost:1001/api/content/announcements",
+      "method": "POST",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"title\": \"Welcome to LMS!\",\n  \"content\": \"We are excited to have you here. Please check your courses and schedules.\",\n  \"authorId\": \"69171140c2e3b377f53dfa54\",\n  \"authorRole\": \"admin\",\n  \"targetAudience\": \"all\",\n  \"priority\": \"high\"\n}"
+      },
+      "folderId": "content-folder"
+    },
+    {
+      "id": "10",
+      "name": "Get All Announcements",
+      "url": "http://localhost:1001/api/content/announcements",
+      "method": "GET",
+      "headers": [],
+      "folderId": "content-folder"
+    }
+  ]
+}
