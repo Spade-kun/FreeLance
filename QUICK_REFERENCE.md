@@ -59,7 +59,7 @@ node server.js &
 ```bash
 # Required for Google OAuth
 GOOGLE_CLIENT_ID=your_id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=GOCSPX-xxxxx
+GOOGLE_CLIENT_SECRET=GOCSPX-YOUR_SECRET_HERE
 GOOGLE_CALLBACK_URL=http://localhost:1002/api/auth/google/callback
 FRONTEND_URL=http://localhost:5173
 

@@ -83,7 +83,7 @@ Auth Service (1002)
 VITE_API_URL=http://localhost:1001/api
 
 # Google OAuth
-VITE_GOOGLE_CLIENT_ID=706284845222-0fk5il5u25h1doe0f392fmdhmunfi6f8.apps.googleusercontent.com
+VITE_GOOGLE_CLIENT_ID=YOUR_CLIENT_ID.apps.googleusercontent.com
 
 # reCAPTCHA v3
 VITE_RECAPTCHA_SITE_KEY=6LeniAwsAAAAAGL19XxsJsRvt-gp_cmsmd_qYyuQ
@@ -94,8 +94,8 @@ VITE_RECAPTCHA_SITE_KEY=6LeniAwsAAAAAGL19XxsJsRvt-gp_cmsmd_qYyuQ
 PORT=1002
 
 # Google OAuth
-GOOGLE_CLIENT_ID=706284845222-0fk5il5u25h1doe0f392fmdhmunfi6f8.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=yGOCSPX-b18Je3icGqeoss3Ju_d3PjfV3UG_
+GOOGLE_CLIENT_ID=YOUR_CLIENT_ID.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=yGOCSPX-YOUR_SECRET_HERE
 GOOGLE_CALLBACK_URL=http://localhost:1002/api/auth/google/callback
 
 # Google reCAPTCHA v3
