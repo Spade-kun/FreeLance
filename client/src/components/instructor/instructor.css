@@ -1,0 +1,151 @@
+:root {
+    --bg:#f4f6fb;
+    --card:#ffffff;
+    --muted:#6b7280;
+    --accent:#2563eb;
+    --danger:#ef4444;
+  }
+  
+  * {
+    box-sizing:border-box;
+    font-family:Inter, system-ui, Arial, sans-serif;
+  }
+  
+  html,body,#app {
+    height:100%;
+    margin:0;
+  }
+  
+  body {
+    background:var(--bg);
+  }
+  
+  .app {
+    display:flex;
+    min-height:100vh;
+  }
+  
+  .sidebar {
+    width:260px;
+    background:linear-gradient(180deg,#0f172a 0%, #111827 100%);
+    color:#fff;
+    padding:20px;
+  }
+  
+  .brand {
+    font-weight:700;
+    font-size:18px;
+    margin-bottom:18px;
+  }
+  
+  .nav {
+    list-style:none;
+    padding:0;
+    margin:12px 0;
+  }
+  
+  .nav li {
+    margin:8px 0;
+  }
+  
+  .nav button {
+    width:100%;
+    background:transparent;
+    border:0;
+    color:inherit;
+    text-align:left;
+    padding:10px;
+    border-radius:8px;
+    cursor:pointer;
+  }
+  
+  .nav button:hover {
+    background:rgba(255,255,255,0.06);
+  }
+  
+  .content {
+    flex:1;
+    padding:20px;
+  }
+  
+  .topbar {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:18px;
+  }
+  
+  .card {
+    background:var(--card);
+    border-radius:12px;
+    padding:16px;
+    box-shadow:0 6px 18px rgba(2,6,23,0.08);
+  }
+  
+  h1 {
+    margin:0;
+    font-size:20px;
+  }
+  
+  h2 {
+    margin-top:0;
+  }
+  
+  table {
+    width:100%;
+    border-collapse:collapse;
+  }
+  
+  th,td {
+    padding:8px;
+    border-bottom:1px solid #eef2f7;
+    text-align:left;
+  }
+  
+  .muted {
+    color:var(--muted);
+  }
+  
+  .btn {
+    display:inline-block;
+    padding:8px 10px;
+    border-radius:8px;
+    border:0;
+    background:var(--accent);
+    color:#fff;
+    cursor:pointer;
+  }
+  
+  .btn.ghost {
+    background:transparent;
+    color:var(--accent);
+    border:1px solid rgba(37,99,235,0.3);
+  }
+  
+  input,select,textarea {
+    padding:8px;
+    border-radius:8px;
+    border:1px solid #e6eef8;
+    width:100%;
+  }
+  
+  .form-row {
+    display:flex;
+    gap:8px;
+    margin:8px 0;
+  }
+  
+  .right {
+    text-align:right;
+  }
+  
+  .small {
+    font-size:13px;
+  }
+  
+  .footer {
+    margin-top:18px;
+    color:var(--muted);
+    font-size:13px;
+  }
+  
