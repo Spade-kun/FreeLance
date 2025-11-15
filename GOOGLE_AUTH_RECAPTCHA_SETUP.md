@@ -67,7 +67,7 @@ This guide explains how to configure Google OAuth authentication and reCAPTCHA v
 
 5. **Copy the credentials**:
    - Client ID: `123456789-abc...xyz.apps.googleusercontent.com`
-   - Client Secret: `GOCSPX-YOUR_SECRET_HERE...xyz`
+   - Client Secret: `GOCSPX-abc...xyz`
 
 ### Step 4: Configure Backend (.env)
 
@@ -76,7 +76,7 @@ Edit `/server/auth-service/.env`:
 ```bash
 # Google OAuth
 GOOGLE_CLIENT_ID=123456789-abc...xyz.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=GOCSPX-YOUR_SECRET_HERE...xyz
+GOOGLE_CLIENT_SECRET=GOCSPX-abc...xyz
 GOOGLE_CALLBACK_URL=http://localhost:1002/api/auth/google/callback
 
 # Frontend URL (for redirects)

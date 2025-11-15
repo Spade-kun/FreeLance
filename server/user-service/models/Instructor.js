@@ -1,6 +1,11 @@
 import mongoose from 'mongoose';
 
 const instructorSchema = new mongoose.Schema({
+  instructorId: {
+    type: Number,
+    unique: true,
+    sparse: true // Allows multiple null values without duplicate key error
+  },
   firstName: {
     type: String,
     required: [true, 'First name is required'],
@@ -57,6 +62,28 @@ const instructorSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true
+});
+
+// Auto-increment instructorId
+instructorSchema.pre('save', async function(next) {
+  if (!this.instructorId && !this.isNew) {
+    return next();
+  }
+  
+  if (this.isNew && !this.instructorId) {
+    try {
+      const lastInstructor = await this.constructor.findOne({ instructorId: { $ne: null } })
+        .sort({ instructorId: -1 })
+        .select('instructorId')
+        .lean();
+      this.instructorId = lastInstructor ? lastInstructor.instructorId + 1 : 1;
+      console.log(`🆔 Auto-generated instructorId: ${this.instructorId}`);
+    } catch (error) {
+      console.error('Error generating instructorId:', error);
+      return next(error);
+    }
+  }
+  next();
 });
 
 const Instructor = mongoose.model('Instructor', instructorSchema);

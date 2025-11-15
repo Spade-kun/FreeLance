@@ -1,6 +1,11 @@
 import mongoose from 'mongoose';
 
 const sectionSchema = new mongoose.Schema({
+  sectionId: {
+    type: Number,
+    unique: true,
+    sparse: true
+  },
   courseId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Course',
@@ -47,6 +52,28 @@ const sectionSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true
+});
+
+// Auto-increment sectionId
+sectionSchema.pre('save', async function(next) {
+  if (!this.sectionId && !this.isNew) {
+    return next();
+  }
+  
+  if (this.isNew && !this.sectionId) {
+    try {
+      const lastSection = await this.constructor.findOne({ sectionId: { $ne: null } })
+        .sort({ sectionId: -1 })
+        .select('sectionId')
+        .lean();
+      this.sectionId = lastSection ? lastSection.sectionId + 1 : 1;
+      console.log(`🆔 Auto-generated sectionId: ${this.sectionId}`);
+    } catch (error) {
+      console.error('Error generating sectionId:', error);
+      return next(error);
+    }
+  }
+  next();
 });
 
 const Section = mongoose.model('Section', sectionSchema);

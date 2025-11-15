@@ -18,6 +18,11 @@ export const verifyRecaptcha = (action = 'submit', minScore = 0.5) => {
 
       // Check if token is provided
       if (!recaptchaToken) {
+        // In development mode, allow requests without token if reCAPTCHA is not strictly required
+        if (process.env.NODE_ENV === 'development' || process.env.RECAPTCHA_REQUIRED === 'false') {
+          console.warn('⚠️ reCAPTCHA token missing in development mode, allowing request');
+          return next();
+        }
         return res.status(400).json({
           success: false,
           message: 'reCAPTCHA token is required'

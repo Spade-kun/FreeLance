@@ -1,6 +1,11 @@
 import mongoose from 'mongoose';
 
 const courseSchema = new mongoose.Schema({
+  courseId: {
+    type: Number,
+    unique: true,
+    sparse: true
+  },
   courseCode: {
     type: String,
     required: [true, 'Course code is required'],
@@ -27,8 +32,8 @@ const courseSchema = new mongoose.Schema({
   },
   level: {
     type: String,
-    enum: ['Beginner', 'Intermediate', 'Advanced'],
-    default: 'Beginner'
+    enum: ['Undergraduate', 'Graduate', 'Postgraduate', 'Beginner', 'Intermediate', 'Advanced'],
+    default: 'Undergraduate'
   },
   duration: {
     weeks: Number,
@@ -47,6 +52,28 @@ const courseSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true
+});
+
+// Auto-increment courseId
+courseSchema.pre('save', async function(next) {
+  if (!this.courseId && !this.isNew) {
+    return next();
+  }
+  
+  if (this.isNew && !this.courseId) {
+    try {
+      const lastCourse = await this.constructor.findOne({ courseId: { $ne: null } })
+        .sort({ courseId: -1 })
+        .select('courseId')
+        .lean();
+      this.courseId = lastCourse ? lastCourse.courseId + 1 : 1;
+      console.log(`🆔 Auto-generated courseId: ${this.courseId}`);
+    } catch (error) {
+      console.error('Error generating courseId:', error);
+      return next(error);
+    }
+  }
+  next();
 });
 
 const Course = mongoose.model('Course', courseSchema);

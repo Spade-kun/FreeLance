@@ -1,6 +1,11 @@
 import mongoose from 'mongoose';
 
 const studentSchema = new mongoose.Schema({
+  studentId: {
+    type: Number,
+    unique: true,
+    sparse: true // Allows multiple null values without duplicate key error
+  },
   firstName: {
     type: String,
     required: [true, 'First name is required'],
@@ -35,11 +40,6 @@ const studentSchema = new mongoose.Schema({
     zipCode: String,
     country: String
   },
-  studentId: {
-    type: String,
-    unique: true,
-    required: [true, 'Student ID is required']
-  },
   enrollmentDate: {
     type: Date,
     default: Date.now
@@ -59,6 +59,28 @@ const studentSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true
+});
+
+// Auto-increment studentId
+studentSchema.pre('save', async function(next) {
+  if (!this.studentId && !this.isNew) {
+    return next();
+  }
+  
+  if (this.isNew && !this.studentId) {
+    try {
+      const lastStudent = await this.constructor.findOne({ studentId: { $ne: null } })
+        .sort({ studentId: -1 })
+        .select('studentId')
+        .lean();
+      this.studentId = lastStudent ? lastStudent.studentId + 1 : 1;
+      console.log(`🆔 Auto-generated studentId: ${this.studentId}`);
+    } catch (error) {
+      console.error('Error generating studentId:', error);
+      return next(error);
+    }
+  }
+  next();
 });
 
 const Student = mongoose.model('Student', studentSchema);
