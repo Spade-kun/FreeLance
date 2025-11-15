@@ -1162,6 +1162,12 @@ export default function InstructorDashboard() {
   const [selectedAssessmentCourse, setSelectedAssessmentCourse] = useState(null);
   const [showActivityForm, setShowActivityForm] = useState(false);
   const [editingActivity, setEditingActivity] = useState(null);
+  const [showSubmissionsModal, setShowSubmissionsModal] = useState(false);
+  const [selectedActivity, setSelectedActivity] = useState(null);
+  const [submissions, setSubmissions] = useState([]);
+  const [gradingSubmission, setGradingSubmission] = useState(null);
+  const [gradeScore, setGradeScore] = useState("");
+  const [gradeFeedback, setGradeFeedback] = useState("");
 
   // Activity form fields
   const [activityTitle, setActivityTitle] = useState("");
@@ -1333,25 +1339,61 @@ export default function InstructorDashboard() {
     }
   };
 
-  const viewSubmissions = async (activityId) => {
+  const viewSubmissions = async (activity) => {
     try {
-      const submissionsRes = await api.getActivitySubmissions(activityId);
-      const submissions = submissionsRes?.data || [];
+      setLoading(true);
+      const submissionsRes = await api.getActivitySubmissions(activity._id);
+      const submissionsData = submissionsRes?.data || [];
       
-      if (submissions.length === 0) {
-        alert('No submissions yet for this activity.');
-        return;
+      setSelectedActivity(activity);
+      setSubmissions(submissionsData);
+      setShowSubmissionsModal(true);
+      setLoading(false);
+      
+      if (submissionsData.length === 0) {
+        console.log('No submissions yet for this activity.');
       }
-
-      // Display submissions (can be enhanced with a modal/separate view)
-      const submissionList = submissions.map(s => 
-        `Student: ${s.studentId}\nSubmitted: ${new Date(s.submittedAt).toLocaleString()}\nGrade: ${s.grade || 'Not graded'}`
-      ).join('\n\n---\n\n');
-      
-      alert('Submissions:\n\n' + submissionList);
     } catch (err) {
       console.error('Error fetching submissions:', err);
       alert('Failed to load submissions');
+      setLoading(false);
+    }
+  };
+
+  const openGradingForm = (submission) => {
+    setGradingSubmission(submission);
+    setGradeScore(submission.grade?.toString() || "");
+    setGradeFeedback(submission.feedback || "");
+  };
+
+  const submitGrade = async () => {
+    if (!gradingSubmission) return;
+    
+    const score = Number(gradeScore);
+    if (isNaN(score) || score < 0 || score > selectedActivity.totalPoints) {
+      alert(`Please enter a valid score between 0 and ${selectedActivity.totalPoints}`);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await api.gradeSubmission(gradingSubmission._id, {
+        score: score,
+        feedback: gradeFeedback.trim(),
+        gradedBy: currentUser?.userId || currentUser?.id
+      });
+      
+      alert('✅ Grade submitted successfully!');
+      setGradingSubmission(null);
+      setGradeScore("");
+      setGradeFeedback("");
+      
+      // Refresh submissions
+      await viewSubmissions(selectedActivity);
+    } catch (err) {
+      console.error('Error submitting grade:', err);
+      alert('❌ Failed to submit grade: ' + err.message);
+      setLoading(false);
     }
   };
 
@@ -1653,10 +1695,10 @@ export default function InstructorDashboard() {
                       
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <button 
-                          className="btn ghost small"
-                          onClick={() => viewSubmissions(activity._id)}
+                          className="btn-primary small"
+                          onClick={() => viewSubmissions(activity)}
                         >
-                          View Submissions
+                          📋 View Submissions
                         </button>
                         <button 
                           className="btn ghost small"
@@ -1677,6 +1719,264 @@ export default function InstructorDashboard() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Submissions Modal */}
+        {showSubmissionsModal && selectedActivity && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            overflow: 'auto',
+            padding: '20px'
+          }}>
+            <div className="card" style={{ 
+              minWidth: '800px', 
+              maxWidth: '95%', 
+              maxHeight: '90vh',
+              overflow: 'auto',
+              background: '#fff' 
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'start',
+                marginBottom: '20px',
+                borderBottom: '2px solid #e5e7eb',
+                paddingBottom: '15px'
+              }}>
+                <div>
+                  <h3 style={{ margin: 0 }}>Submissions for: {selectedActivity.title}</h3>
+                  <p className="small muted" style={{ margin: '8px 0 0 0' }}>
+                    Total Points: {selectedActivity.totalPoints} | 
+                    Due: {new Date(selectedActivity.dueDate).toLocaleString()} | 
+                    Submissions: {submissions.length}
+                  </p>
+                </div>
+                <button 
+                  className="btn ghost small"
+                  onClick={() => {
+                    setShowSubmissionsModal(false);
+                    setSelectedActivity(null);
+                    setSubmissions([]);
+                    setGradingSubmission(null);
+                  }}
+                >
+                  ✖ Close
+                </button>
+              </div>
+
+              {loading ? (
+                <p className="muted">Loading submissions...</p>
+              ) : submissions.length === 0 ? (
+                <p className="muted" style={{ textAlign: 'center', padding: '40px' }}>
+                  📭 No submissions yet for this activity
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {submissions.map((submission) => (
+                    <div 
+                      key={submission._id} 
+                      className="card"
+                      style={{ 
+                        padding: '16px',
+                        border: '1px solid #e5e7eb',
+                        background: submission.grade !== undefined ? '#f0fdf4' : '#fff'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                            <h4 style={{ margin: 0 }}>
+                              👤 Student ID: {submission.studentId}
+                            </h4>
+                            {submission.isLate && (
+                              <span style={{ 
+                                background: '#fee2e2', 
+                                color: '#dc2626',
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                fontSize: '12px'
+                              }}>
+                                ⏰ Late
+                              </span>
+                            )}
+                            {(submission.score !== undefined && submission.score !== null) && (
+                              <span style={{ 
+                                background: '#dcfce7', 
+                                color: '#16a34a',
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                fontWeight: 'bold'
+                              }}>
+                                ✓ Graded
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="small muted" style={{ margin: '4px 0' }}>
+                            Submitted: {new Date(submission.submittedAt).toLocaleString()}
+                          </p>
+
+                          {submission.content && (
+                            <div style={{ 
+                              margin: '12px 0',
+                              padding: '12px',
+                              background: '#f9fafb',
+                              borderRadius: '6px',
+                              border: '1px solid #e5e7eb'
+                            }}>
+                              <p className="small" style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+                                {submission.content}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* File Attachments */}
+                          {submission.attachments && submission.attachments.length > 0 && (
+                            <div style={{ margin: '12px 0' }}>
+                              <p className="small" style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+                                📎 Attachments:
+                              </p>
+                              {submission.attachments.map((att, idx) => (
+                                <div key={idx} style={{ marginBottom: '4px' }}>
+                                  <a 
+                                    href={`http://localhost:1001${att.url}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="small"
+                                    style={{ 
+                                      color: '#646cff',
+                                      textDecoration: 'none',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '6px'
+                                    }}
+                                  >
+                                    📄 {att.filename} ({(att.fileSize / 1024).toFixed(2)} KB)
+                                  </a>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Current Grade */}
+                          {(submission.score !== undefined && submission.score !== null) && (
+                            <div style={{ 
+                              margin: '12px 0',
+                              padding: '12px',
+                              background: '#dcfce7',
+                              borderRadius: '6px',
+                              border: '1px solid #86efac'
+                            }}>
+                              <p className="small" style={{ margin: 0, fontWeight: 'bold' }}>
+                                Grade: {submission.score} / {selectedActivity.totalPoints}
+                              </p>
+                              {submission.feedback && (
+                                <p className="small muted" style={{ margin: '8px 0 0 0' }}>
+                                  Feedback: {submission.feedback}
+                                </p>
+                              )}
+                              {submission.gradedAt && (
+                                <p className="small muted" style={{ margin: '4px 0 0 0', fontSize: '11px' }}>
+                                  Graded on: {new Date(submission.gradedAt).toLocaleString()}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        <div style={{ marginLeft: '16px' }}>
+                          {gradingSubmission?._id === submission._id ? (
+                            <div style={{ 
+                              minWidth: '250px',
+                              padding: '12px',
+                              background: '#fef3c7',
+                              borderRadius: '6px',
+                              border: '1px solid #fbbf24'
+                            }}>
+                              <p className="small" style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+                                Grade this submission:
+                              </p>
+                              <div style={{ marginBottom: '8px' }}>
+                                <label className="small" style={{ display: 'block', marginBottom: '4px' }}>
+                                  Score (out of {selectedActivity.totalPoints}):
+                                </label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max={selectedActivity.totalPoints}
+                                  value={gradeScore}
+                                  onChange={(e) => setGradeScore(e.target.value)}
+                                  style={{ 
+                                    width: '100%', 
+                                    padding: '6px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #d1d5db'
+                                  }}
+                                />
+                              </div>
+                              <div style={{ marginBottom: '8px' }}>
+                                <label className="small" style={{ display: 'block', marginBottom: '4px' }}>
+                                  Feedback (optional):
+                                </label>
+                                <textarea
+                                  rows="3"
+                                  value={gradeFeedback}
+                                  onChange={(e) => setGradeFeedback(e.target.value)}
+                                  placeholder="Great work! / Needs improvement..."
+                                  style={{ 
+                                    width: '100%', 
+                                    padding: '6px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #d1d5db'
+                                  }}
+                                />
+                              </div>
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <button 
+                                  className="btn-primary small"
+                                  onClick={submitGrade}
+                                  disabled={loading}
+                                >
+                                  ✓ Submit
+                                </button>
+                                <button 
+                                  className="btn ghost small"
+                                  onClick={() => {
+                                    setGradingSubmission(null);
+                                    setGradeScore("");
+                                    setGradeFeedback("");
+                                  }}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button 
+                              className="btn-primary small"
+                              onClick={() => openGradingForm(submission)}
+                            >
+                              {(submission.score !== undefined && submission.score !== null) ? '✏️ Re-grade' : '📝 Grade'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
