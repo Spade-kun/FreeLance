@@ -324,6 +324,10 @@ class APIService {
     return this.get(`/assessments/courses/${courseId}/activities`);
   }
 
+  async getActivitiesByCourse(courseId) {
+    return this.getCourseActivities(courseId);
+  }
+
   async getActivityById(id) {
     return this.get(`/assessments/activities/${id}`);
   }
@@ -343,6 +347,10 @@ class APIService {
   }
 
   // Submissions
+  async getSubmissions() {
+    return this.get('/assessments/submissions');
+  }
+
   async getActivitySubmissions(activityId) {
     return this.get(`/assessments/activities/${activityId}/submissions`);
   }
@@ -395,6 +403,57 @@ class APIService {
   async getStudentAttendance(studentId, courseId = null) {
     const query = courseId ? `?courseId=${courseId}` : '';
     return this.get(`/reports/attendance/student/${studentId}${query}`);
+  }
+
+  // ==================== FILE UPLOAD API (Google Drive) ====================
+
+  async uploadFile(file, metadata = {}) {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    // Add metadata fields
+    if (metadata.studentId) formData.append('studentId', metadata.studentId);
+    if (metadata.activityId) formData.append('activityId', metadata.activityId);
+    if (metadata.submissionId) formData.append('submissionId', metadata.submissionId);
+
+    const url = `${this.baseURL}/assessments/files/upload`;
+    const config = {
+      method: 'POST',
+      headers: {
+        'Authorization': this.token ? `Bearer ${this.token}` : '',
+        // Don't set Content-Type for FormData, browser will set it with boundary
+      },
+      body: formData,
+    };
+
+    try {
+      const response = await fetch(url, config);
+      
+      if (!response.ok) {
+        let errorMessage = 'File upload failed';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('File upload error:', error);
+      throw error;
+    }
+  }
+
+  async deleteFile(fileId) {
+    return this.delete(`/assessments/files/${fileId}`);
+  }
+
+  async downloadFile(fileId) {
+    const url = `${this.baseURL}/assessments/files/${fileId}/download`;
+    window.open(url, '_blank');
   }
 }
 

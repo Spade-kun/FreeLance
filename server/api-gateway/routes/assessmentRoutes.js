@@ -1,5 +1,5 @@
 import express from 'express';
-import { proxyRequest } from '../utils/proxyHelper.js';
+import { proxyRequest, proxyFileUpload } from '../utils/proxyHelper.js';
 
 const router = express.Router();
 const ASSESSMENT_SERVICE = process.env.ASSESSMENT_SERVICE_URL || 'http://localhost:1006';
@@ -23,5 +23,17 @@ router.post('/submissions/:submissionId/grade', (req, res) => proxyRequest(req, 
 router.put('/submissions/:submissionId/grade', (req, res) => proxyRequest(req, res, `${ASSESSMENT_SERVICE}/api/assessments/submissions/${req.params.submissionId}/grade`));
 router.get('/courses/:courseId/grades', (req, res) => proxyRequest(req, res, `${ASSESSMENT_SERVICE}/api/assessments/courses/${req.params.courseId}/grades`));
 router.get('/student/:studentId/grades', (req, res) => proxyRequest(req, res, `${ASSESSMENT_SERVICE}/api/assessments/student/${req.params.studentId}/grades`));
+
+// File upload routes (Local Storage) - Use special file proxy to preserve streams
+router.post('/files/upload', (req, res) => proxyFileUpload(req, res, `${ASSESSMENT_SERVICE}/api/assessments/files/upload`));
+router.delete('/files/:fileId', (req, res) => proxyRequest(req, res, `${ASSESSMENT_SERVICE}/api/assessments/files/${req.params.fileId}`));
+router.get('/files/:fileId/download', (req, res) => proxyFileUpload(req, res, `${ASSESSMENT_SERVICE}/api/assessments/files/${req.params.fileId}/download`));
+router.get('/files/:fileId', (req, res) => proxyFileUpload(req, res, `${ASSESSMENT_SERVICE}/api/assessments/files/${req.params.fileId}`)); // View file
+
+// Get all submissions route (needed for instructor view)
+router.get('/submissions', (req, res) => proxyRequest(req, res, `${ASSESSMENT_SERVICE}/api/assessments/submissions`));
+
+// Create submission directly (without activityId in path)
+router.post('/submissions', (req, res) => proxyRequest(req, res, `${ASSESSMENT_SERVICE}/api/assessments/submissions`));
 
 export default router;

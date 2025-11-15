@@ -117,9 +117,9 @@ export default function App() {
           } 
         />
 
-        {/* Student Dashboard - Protected */}
+        {/* Student Dashboard - Protected with nested routes */}
         <Route 
-          path="/student" 
+          path="/student/*" 
           element={
             <ProtectedRoute requiredRole="student">
               <StudentDashboard />

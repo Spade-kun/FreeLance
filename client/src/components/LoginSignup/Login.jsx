@@ -62,7 +62,7 @@ export default function Login() {
         // Redirect based on role
         if (user.role === "admin") navigate("/admin/dashboard");
         else if (user.role === "instructor") navigate("/instructor/dashboard");
-        else navigate("/student");
+        else navigate("/student/dashboard");
       }
     } catch (error) {
       alert(error.message || "Login failed. Please check your credentials.");

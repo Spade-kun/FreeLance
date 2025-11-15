@@ -47,9 +47,15 @@
     padding: 10px;
     border-radius: 8px;
     cursor: pointer;
+    transition: all 0.2s ease;
   }
   .nav button:hover {
     background: rgba(255, 255, 255, 0.06);
+  }
+  .nav button.active {
+    background: rgba(99, 102, 241, 0.2);
+    border-left: 3px solid #6366f1;
+    font-weight: 600;
   }
   .content {
     flex: 1;
@@ -66,6 +72,10 @@
     border-radius: 12px;
     padding: 16px;
     box-shadow: 0 6px 18px rgba(2, 6, 23, 0.08);
+    margin-bottom: 16px;
+  }
+  .card.small {
+    padding: 12px;
   }
   h1 {
     margin: 0;
@@ -74,21 +84,112 @@
   h2 {
     margin-top: 0;
   }
+  h3 {
+    margin-top: 0;
+    margin-bottom: 12px;
+  }
+  h4 {
+    margin: 0;
+  }
   table {
     width: 100%;
     border-collapse: collapse;
+    margin-top: 12px;
   }
   th, td {
-    padding: 8px;
+    padding: 12px;
     border-bottom: 1px solid #eef2f7;
     text-align: left;
   }
+  th {
+    background: #f8f9fa;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  .table {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    background: #6366f1;
+    color: white;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+  }
+  .btn:hover {
+    background: #4f46e5;
+  }
+  .btn.small {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+  }
+  .btn.ghost {
+    background: transparent;
+    border: 1px solid #d1d5db;
+    color: #374151;
+  }
+  .btn.ghost:hover {
+    background: #f3f4f6;
+  }
+  .btn-primary {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    background: #6366f1;
+    color: white;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+  .btn-primary:hover {
+    background: #4f46e5;
+  }
+  .btn-danger {
+    background: #ef4444;
+    color: white;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  .btn-danger:hover {
+    background: #dc2626;
+  }
   .muted {
     color: var(--muted);
+  }
+  .small {
+    font-size: 0.9rem;
   }
   .footer {
     margin-top: 18px;
     color: var(--muted);
     font-size: 13px;
+  }
+  input[type="text"],
+  input[type="email"],
+  input[type="file"],
+  textarea,
+  select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.9rem;
+  }
+  textarea {
+    resize: vertical;
+    font-family: inherit;
+  }
+  label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 500;
   }
   

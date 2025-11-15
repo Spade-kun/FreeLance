@@ -63,6 +63,16 @@ export const deleteActivity = async (req, res) => {
 
 // SUBMISSION CONTROLLERS
 
+// Get all submissions
+export const getAllSubmissions = async (req, res) => {
+  try {
+    const submissions = await Submission.find();
+    res.status(200).json({ success: true, data: submissions });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 export const getSubmissionsByActivity = async (req, res) => {
   try {
     const submissions = await Submission.find({ activityId: req.params.activityId });
@@ -86,7 +96,14 @@ export const getSubmissionById = async (req, res) => {
 
 export const createSubmission = async (req, res) => {
   try {
-    const activity = await Activity.findById(req.params.activityId);
+    // Get activityId from either route params or request body
+    const activityId = req.params.activityId || req.body.activityId;
+    
+    if (!activityId) {
+      return res.status(400).json({ message: 'Activity ID is required' });
+    }
+
+    const activity = await Activity.findById(activityId);
     if (!activity) {
       return res.status(404).json({ message: 'Activity not found' });
     }
@@ -99,13 +116,19 @@ export const createSubmission = async (req, res) => {
 
     const submissionData = {
       ...req.body,
-      activityId: req.params.activityId,
+      activityId: activityId,
       isLate
     };
 
+    console.log('💾 Creating submission:', submissionData);
+
     const submission = await Submission.create(submissionData);
+    
+    console.log('✅ Submission created successfully:', submission._id);
+    
     res.status(201).json({ success: true, data: submission });
   } catch (error) {
+    console.error('❌ Error creating submission:', error);
     if (error.code === 11000) {
       return res.status(400).json({ message: 'You have already submitted this activity' });
     }

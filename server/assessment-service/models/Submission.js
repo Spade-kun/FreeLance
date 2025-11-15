@@ -16,8 +16,19 @@ const submissionSchema = new mongoose.Schema({
   attachments: [{
     filename: String,
     url: String,
-    fileType: String
+    fileType: String,
+    fileId: String, // Google Drive file ID
+    fileSize: Number, // File size in bytes
+    uploadedAt: {
+      type: Date,
+      default: Date.now
+    }
   }],
+  // Legacy fields for backward compatibility
+  fileUrl: String,
+  fileId: String,
+  fileName: String,
+  fileSize: Number,
   submittedAt: {
     type: Date,
     default: Date.now
