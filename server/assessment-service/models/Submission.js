@@ -17,7 +17,9 @@ const submissionSchema = new mongoose.Schema({
     filename: String,
     url: String,
     fileType: String,
-    fileId: String, // Google Drive file ID
+    fileId: String, // Local file ID
+    driveFileId: String, // Google Drive file ID
+    driveWebViewLink: String, // Google Drive web view link
     fileSize: Number, // File size in bytes
     uploadedAt: {
       type: Date,

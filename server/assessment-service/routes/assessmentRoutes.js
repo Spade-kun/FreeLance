@@ -19,7 +19,9 @@ import {
   uploadFile,
   deleteFile,
   downloadFile,
-  uploadMiddleware
+  uploadMiddleware,
+  getAuthUrl,
+  oauth2callback
 } from '../controllers/fileController.js';
 
 const router = express.Router();
@@ -51,5 +53,9 @@ router.post('/files/upload', uploadMiddleware, uploadFile);
 router.delete('/files/:fileId', deleteFile);
 router.get('/files/:fileId/download', downloadFile);
 router.get('/files/:fileId', downloadFile); // Serve file (can view in browser)
+
+// OAuth2 routes for Google Drive
+router.get('/auth/google', getAuthUrl);
+router.get('/oauth2callback', oauth2callback);
 
 export default router;

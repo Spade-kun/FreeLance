@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Drive OAuth Setup</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #4285f4;
+            text-align: center;
+        }
+        .step {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-left: 4px solid #4285f4;
+        }
+        .step h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        button {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 0;
+            display: block;
+            width: 100%;
+        }
+        button:hover {
+            background: #357ae8;
+        }
+        .code-box {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            word-break: break-all;
+        }
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Google Drive OAuth Setup</h1>
+        
+        <div class="warning">
+            <strong>⚠️ Before starting:</strong>
+            <ol>
+                <li>Make sure you've created OAuth2 credentials in Google Cloud Console</li>
+                <li>Added Client ID and Client Secret to .env file</li>
+                <li>Assessment service is running on port 1006</li>
+            </ol>
+        </div>
+
+        <div class="step">
+            <h3>Step 1: Get Authorization URL</h3>
+            <button onclick="getAuthUrl()">Get Authorization URL</button>
+            <div id="authUrlBox" class="hidden">
+                <p>Click the link below to authorize:</p>
+                <div class="code-box" id="authUrl"></div>
+                <button onclick="openAuthUrl()">Open Authorization Page</button>
+            </div>
+        </div>
+
+        <div class="step">
+            <h3>Step 2: After Authorization</h3>
+            <p>After you authorize, you'll be redirected and see your refresh token.</p>
+            <p>Copy it and paste it here to verify:</p>
+            <input type="text" id="refreshToken" placeholder="Paste your GOOGLE_REFRESH_TOKEN here">
+            <button onclick="showEnvInstructions()">Show .env Instructions</button>
+            <div id="envInstructions" class="hidden">
+                <div class="success">
+                    <h4>Add this line to your .env file:</h4>
+                    <div class="code-box" id="envLine"></div>
+                    <p><strong>File location:</strong> /server/assessment-service/.env</p>
+                    <p>Then restart the service: <code>npm start</code></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="step">
+            <h3>Step 3: Test Upload</h3>
+            <p>After updating .env and restarting, test file upload through the student dashboard.</p>
+            <button onclick="testConnection()">Test API Connection</button>
+            <div id="testResult"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:1006/api/assessments';
+        let authUrlValue = '';
+
+        async function getAuthUrl() {
+            try {
+                const response = await fetch(`${API_BASE}/auth/google`);
+                const data = await response.json();
+                authUrlValue = data.authUrl;
+                document.getElementById('authUrl').innerHTML = `<a href="${authUrlValue}" target="_blank">${authUrlValue}</a>`;
+                document.getElementById('authUrlBox').classList.remove('hidden');
+            } catch (error) {
+                alert('Error: ' + error.message + '\n\nMake sure the assessment service is running on port 1006');
+            }
+        }
+
+        function openAuthUrl() {
+            if (authUrlValue) {
+                window.open(authUrlValue, '_blank');
+            }
+        }
+
+        function showEnvInstructions() {
+            const token = document.getElementById('refreshToken').value;
+            if (!token) {
+                alert('Please paste your refresh token first');
+                return;
+            }
+            document.getElementById('envLine').textContent = `GOOGLE_REFRESH_TOKEN=${token}`;
+            document.getElementById('envInstructions').classList.remove('hidden');
+        }
+
+        async function testConnection() {
+            const resultDiv = document.getElementById('testResult');
+            resultDiv.innerHTML = '<p>Testing connection...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:1006/health');
+                const data = await response.json();
+                
+                if (data.status === 'OK') {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <strong>✅ Connection successful!</strong>
+                            <p>Service: ${data.service}</p>
+                            <p>Port: ${data.port}</p>
+                            <p>You can now try uploading files through the student dashboard.</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="warning">
+                        <strong>❌ Connection failed</strong>
+                        <p>${error.message}</p>
+                        <p>Make sure the assessment service is running.</p>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

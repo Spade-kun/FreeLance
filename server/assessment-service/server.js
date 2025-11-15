@@ -11,7 +11,17 @@ const PORT = process.env.PORT || 1006;
 
 connectDB();
 
-app.use(cors({ origin: process.env.ALLOWED_ORIGINS?.split(',') || '*', credentials: true }));
+// Allow CORS for frontend and local file:// access
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [];
+app.use(cors({ 
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, or file://)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(null, true); // Allow all for development
+  },
+  credentials: true 
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
