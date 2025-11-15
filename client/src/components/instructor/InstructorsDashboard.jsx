@@ -55,6 +55,9 @@ export default function InstructorDashboard() {
   const [lessonOrder, setLessonOrder] = useState("");
   const [lessonContent, setLessonContent] = useState("");
 
+  // Instructor profile data
+  const [instructorProfile, setInstructorProfile] = useState(null);
+
   useEffect(() => {
     loadUserData();
   }, []);
@@ -70,6 +73,9 @@ export default function InstructorDashboard() {
   useEffect(() => {
     if (currentUser && page === "dashboard") {
       fetchDashboardData();
+    }
+    if (currentUser && page === "profile") {
+      fetchInstructorProfile();
     }
   }, [currentUser, page]);
 
@@ -193,6 +199,29 @@ export default function InstructorDashboard() {
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
       setError(`Failed to load dashboard: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchInstructorProfile = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const instructorId = currentUser?.userId || currentUser?.id;
+      if (!instructorId) {
+        setError('No instructor ID found');
+        return;
+      }
+
+      const response = await api.getInstructorById(instructorId);
+      if (response?.data) {
+        setInstructorProfile(response.data);
+      }
+    } catch (err) {
+      console.error('Error fetching instructor profile:', err);
+      setError('Failed to load profile data');
     } finally {
       setLoading(false);
     }
@@ -378,41 +407,166 @@ export default function InstructorDashboard() {
     );
   };
   // ---------------- Profile ----------------
-  const renderProfile = () => (
-    <div className="card">
-      <h2>Profile Information</h2>
-      <div style={{ marginTop: '16px' }}>
-        <div style={{ marginBottom: '12px' }}>
-          <p className="small muted" style={{ margin: '0 0 4px 0' }}>Email</p>
-          <p style={{ margin: 0, fontSize: '16px' }}>{currentUser?.email || 'N/A'}</p>
+  const renderProfile = () => {
+    if (loading && !instructorProfile) {
+      return (
+        <div className="card">
+          <p>Loading profile...</p>
         </div>
-        <div style={{ marginBottom: '12px' }}>
-          <p className="small muted" style={{ margin: '0 0 4px 0' }}>Role</p>
-          <p style={{ margin: 0, fontSize: '16px' }}>{currentUser?.role || 'Instructor'}</p>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="card">
+          <p style={{ color: '#ef4444' }}>{error}</p>
         </div>
-        <div style={{ marginBottom: '12px' }}>
-          <p className="small muted" style={{ margin: '0 0 4px 0' }}>User ID</p>
-          <p style={{ margin: 0, fontSize: '16px' }}>{currentUser?.userId || currentUser?.id || 'N/A'}</p>
+      );
+    }
+
+    const profile = instructorProfile || {};
+
+    return (
+      <div>
+        {/* Personal Information Card */}
+        <div className="card">
+          <h2>👤 Personal Information</h2>
+          <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+            <div>
+              <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px', color: '#666' }}>
+                First Name
+              </label>
+              <p style={{ margin: 0, fontSize: '16px' }}>{profile.firstName || 'N/A'}</p>
+            </div>
+            <div>
+              <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px', color: '#666' }}>
+                Last Name
+              </label>
+              <p style={{ margin: 0, fontSize: '16px' }}>{profile.lastName || 'N/A'}</p>
+            </div>
+            <div>
+              <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px', color: '#666' }}>
+                Email
+              </label>
+              <p style={{ margin: 0, fontSize: '16px' }}>{profile.email || 'N/A'}</p>
+            </div>
+            <div>
+              <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px', color: '#666' }}>
+                Phone
+              </label>
+              <p style={{ margin: 0, fontSize: '16px' }}>{profile.phone || 'N/A'}</p>
+            </div>
+          </div>
         </div>
-        <div style={{ marginBottom: '12px' }}>
-          <p className="small muted" style={{ margin: '0 0 4px 0' }}>Instructor ID</p>
-          <p style={{ margin: 0, fontSize: '16px' }}>{currentUser?.instructorId || 'N/A'}</p>
+
+        {/* Professional Information Card */}
+        <div className="card" style={{ marginTop: '20px' }}>
+          <h2>💼 Professional Information</h2>
+          <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+            <div>
+              <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px', color: '#666' }}>
+                Instructor ID
+              </label>
+              <p style={{ margin: 0, fontSize: '16px' }}>{profile.instructorId || 'N/A'}</p>
+            </div>
+            <div>
+              <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px', color: '#666' }}>
+                Specialization
+              </label>
+              <p style={{ margin: 0, fontSize: '16px' }}>{profile.specialization || 'N/A'}</p>
+            </div>
+            <div>
+              <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px', color: '#666' }}>
+                Status
+              </label>
+              <p style={{ margin: 0, fontSize: '16px' }}>
+                <span style={{
+                  padding: '4px 12px',
+                  borderRadius: '12px',
+                  fontSize: '14px',
+                  background: profile.isActive ? '#d1fae5' : '#fee2e2',
+                  color: profile.isActive ? '#065f46' : '#991b1b'
+                }}>
+                  {profile.isActive ? 'Active' : 'Inactive'}
+                </span>
+              </p>
+            </div>
+            <div>
+              <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px', color: '#666' }}>
+                Hire Date
+              </label>
+              <p style={{ margin: 0, fontSize: '16px' }}>
+                {profile.hireDate ? new Date(profile.hireDate).toLocaleDateString() : 'N/A'}
+              </p>
+            </div>
+          </div>
+          
+          {profile.bio && (
+            <div style={{ marginTop: '20px' }}>
+              <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px', color: '#666' }}>
+                Bio
+              </label>
+              <p style={{ 
+                margin: 0, 
+                fontSize: '14px', 
+                lineHeight: '1.6',
+                padding: '12px',
+                background: '#f9fafb',
+                borderRadius: '5px',
+                border: '1px solid #e5e7eb'
+              }}>
+                {profile.bio}
+              </p>
+            </div>
+          )}
+
+          {profile.qualifications && profile.qualifications.length > 0 && (
+            <div style={{ marginTop: '20px' }}>
+              <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px', color: '#666' }}>
+                Qualifications
+              </label>
+              <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                {profile.qualifications.map((qual, index) => (
+                  <li key={index} style={{ marginBottom: '8px' }}>{qual}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        {/* System Information Card */}
+        <div className="card" style={{ marginTop: '20px' }}>
+          <h2>⚙️ System Information</h2>
+          <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+            <div>
+              <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px', color: '#666' }}>
+                Account Created
+              </label>
+              <p style={{ margin: 0, fontSize: '16px' }}>
+                {profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'N/A'}
+              </p>
+            </div>
+            <div>
+              <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px', color: '#666' }}>
+                Last Updated
+              </label>
+              <p style={{ margin: 0, fontSize: '16px' }}>
+                {profile.updatedAt ? new Date(profile.updatedAt).toLocaleDateString() : 'N/A'}
+              </p>
+            </div>
+            {/* <div>
+              <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px', color: '#666' }}>
+                Database ID
+              </label>
+              <p style={{ margin: 0, fontSize: '12px', fontFamily: 'monospace', color: '#666' }}>
+                {profile._id || 'N/A'}
+              </p>
+            </div> */}
+          </div>
         </div>
       </div>
-      <div style={{ marginTop: '24px' }}>
-        <button className="btn small" onClick={() => alert('Edit profile feature coming soon!')}>
-          Edit Profile
-        </button>
-        <button 
-          className="btn ghost small" 
-          style={{ marginLeft: '8px' }}
-          onClick={() => alert('Change password feature coming soon!')}
-        >
-          Change Password
-        </button>
-      </div>
-    </div>
-  );
+    );
+  };
 
   // ---------------- Courses ----------------
   const refreshCourses = async () => {
@@ -2130,14 +2284,6 @@ export default function InstructorDashboard() {
           </li>
           <li>
             <button 
-              className={page === "profile" ? "active" : ""} 
-              onClick={() => navigateToPage("profile")}
-            >
-              👤 Profile
-            </button>
-          </li>
-          <li>
-            <button 
               className={page === "courses" ? "active" : ""} 
               onClick={() => navigateToPage("courses")}
             >
@@ -2166,6 +2312,14 @@ export default function InstructorDashboard() {
               onClick={() => navigateToPage("reports")}
             >
               📊 Reports
+            </button>
+          </li>
+          <li>
+            <button 
+              className={page === "profile" ? "active" : ""} 
+              onClick={() => navigateToPage("profile")}
+            >
+              👤 Profile
             </button>
           </li>
           <li>

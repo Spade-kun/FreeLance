@@ -9,6 +9,7 @@ import AccountsPage from "./components/admin/AccountsPage.jsx";
 import CoursesPage from "./components/admin/CoursesPage.jsx";
 import ContentsPage from "./components/admin/ContentsPage.jsx";
 import ReportsPage from "./components/admin/ReportsPage.jsx";
+import AdminProfilePage from "./components/admin/AdminProfilePage.jsx";
 
 // ✅ New import for the Student Dashboard
 import StudentDashboard from "./components/student/StudentDashboard.jsx";
@@ -53,7 +54,8 @@ function AdminLayout() {
       accounts: 'Manage Accounts',
       courses: 'Manage Courses & Enrollment',
       contents: 'Contents',
-      reports: 'Monitor Reports'
+      reports: 'Monitor Reports',
+      profile: 'Profile'
     };
     return titles[currentPage] || 'Dashboard';
   };
@@ -69,6 +71,7 @@ function AdminLayout() {
           <li><button className={currentPage === "courses" ? "active" : ""} onClick={() => navigate("/admin/courses")}>📚 Manage Courses & Enrollment</button></li>
           <li><button className={currentPage === "contents" ? "active" : ""} onClick={() => navigate("/admin/contents")}>📢 Contents</button></li>
           <li><button className={currentPage === "reports" ? "active" : ""} onClick={() => navigate("/admin/reports")}>📈 Monitor Reports</button></li>
+          <li><button className={currentPage === "profile" ? "active" : ""} onClick={() => navigate("/admin/profile")}>👤 Profile</button></li>
           <li><button className="logout-btn" onClick={handleLogout}>🚪 Logout</button></li>
         </ul>
       </aside>
@@ -105,6 +108,7 @@ export default function App() {
           <Route path="courses" element={<CoursesPage />} />
           <Route path="contents" element={<ContentsPage />} />
           <Route path="reports" element={<ReportsPage />} />
+          <Route path="profile" element={<AdminProfilePage />} />
         </Route>
 
         {/* Instructor Dashboard - Protected with nested routes */}

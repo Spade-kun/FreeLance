@@ -52,6 +52,10 @@ export default function StudentDashboard() {
   const [showPayPalButtons, setShowPayPalButtons] = useState(false);
   const [paymentHistory, setPaymentHistory] = useState([]);
 
+  // Profile state
+  const [studentProfile, setStudentProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+
   useEffect(() => {
     loadUserData();
   }, []);
@@ -189,6 +193,24 @@ export default function StudentDashboard() {
       console.error('Error fetching lessons:', err);
       alert('Failed to load module lessons');
       setLoading(false);
+    }
+  };
+
+  const fetchStudentProfile = async () => {
+    try {
+      setProfileLoading(true);
+      const studentId = currentUser?._id || currentUser?.userId || currentUser?.id;
+      if (!studentId) {
+        console.error('No student ID found');
+        return;
+      }
+      
+      const response = await api.getStudentById(studentId);
+      setStudentProfile(response?.data || null);
+    } catch (err) {
+      console.error('Error fetching student profile:', err);
+    } finally {
+      setProfileLoading(false);
     }
   };
 
@@ -901,36 +923,152 @@ export default function StudentDashboard() {
 
   // ---------------- Profile ----------------
   const renderProfile = () => {
+    // Fetch profile data when profile page is opened
+    if (!studentProfile && !profileLoading) {
+      fetchStudentProfile();
+    }
+
+    const profile = studentProfile || currentUser;
+    const enrollmentDate = profile?.enrollmentDate ? new Date(profile.enrollmentDate).toLocaleDateString() : 'N/A';
+    const createdDate = profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'N/A';
+
     return (
       <div>
         <div className="card">
-          <h2>My Profile</h2>
-          <div style={{ marginTop: '20px' }}>
-            <div style={{ marginBottom: '16px' }}>
-              <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>
-                Student ID:
-              </label>
-              <p>{currentUser?.studentId || 'N/A'}</p>
+          <h2>👤 My Profile</h2>
+          
+          {profileLoading ? (
+            <p style={{ marginTop: '20px', color: '#666' }}>Loading profile...</p>
+          ) : (
+            <div style={{ marginTop: '20px' }}>
+              {/* Personal Information */}
+              <div style={{ 
+                padding: '15px', 
+                background: '#f8f9fa', 
+                borderRadius: '8px',
+                marginBottom: '20px'
+              }}>
+                <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', color: '#1e40af' }}>
+                  📋 Personal Information
+                </h3>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                  <div>
+                    <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px', color: '#666' }}>
+                      Student ID:
+                    </label>
+                    <p style={{ margin: 0, fontSize: '15px' }}>{profile?.studentId || 'N/A'}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px', color: '#666' }}>
+                      Status:
+                    </label>
+                    <p style={{ margin: 0 }}>
+                      <span style={{
+                        padding: '4px 12px',
+                        background: profile?.isActive ? '#dcfce7' : '#fee2e2',
+                        color: profile?.isActive ? '#166534' : '#991b1b',
+                        borderRadius: '12px',
+                        fontSize: '13px',
+                        fontWeight: 'bold'
+                      }}>
+                        {profile?.isActive ? '✓ Active' : '✗ Inactive'}
+                      </span>
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px', color: '#666' }}>
+                      First Name:
+                    </label>
+                    <p style={{ margin: 0, fontSize: '15px' }}>{profile?.firstName || 'N/A'}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px', color: '#666' }}>
+                      Last Name:
+                    </label>
+                    <p style={{ margin: 0, fontSize: '15px' }}>{profile?.lastName || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div style={{ 
+                padding: '15px', 
+                background: '#f8f9fa', 
+                borderRadius: '8px',
+                marginBottom: '20px'
+              }}>
+                <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', color: '#1e40af' }}>
+                  📞 Contact Information
+                </h3>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                  <div>
+                    <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px', color: '#666' }}>
+                      Email:
+                    </label>
+                    <p style={{ margin: 0, fontSize: '15px' }}>{profile?.email || 'N/A'}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px', color: '#666' }}>
+                      Phone:
+                    </label>
+                    <p style={{ margin: 0, fontSize: '15px' }}>{profile?.phone || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Guardian Information */}
+              <div style={{ 
+                padding: '15px', 
+                background: '#f8f9fa', 
+                borderRadius: '8px',
+                marginBottom: '20px'
+              }}>
+                <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', color: '#1e40af' }}>
+                  👨‍👩‍👧 Guardian Information
+                </h3>
+                
+                <div>
+                  <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px', color: '#666' }}>
+                    Guardian Name:
+                  </label>
+                  <p style={{ margin: 0, fontSize: '15px' }}>{profile?.guardianName || 'N/A'}</p>
+                </div>
+              </div>
+
+              {/* Enrollment Details */}
+              <div style={{ 
+                padding: '15px', 
+                background: '#f8f9fa', 
+                borderRadius: '8px'
+              }}>
+                <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', color: '#1e40af' }}>
+                  📅 Enrollment Details
+                </h3>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                  <div>
+                    <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px', color: '#666' }}>
+                      Enrollment Date:
+                    </label>
+                    <p style={{ margin: 0, fontSize: '15px' }}>{enrollmentDate}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px', color: '#666' }}>
+                      Account Created:
+                    </label>
+                    <p style={{ margin: 0, fontSize: '15px' }}>{createdDate}</p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div style={{ marginBottom: '16px' }}>
-              <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>
-                Name:
-              </label>
-              <p>{currentUser?.firstName || ''} {currentUser?.lastName || ''}</p>
-            </div>
-            <div style={{ marginBottom: '16px' }}>
-              <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>
-                Email:
-              </label>
-              <p>{currentUser?.email || 'N/A'}</p>
-            </div>
-            <div style={{ marginBottom: '16px' }}>
-              <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>
-                Role:
-              </label>
-              <p style={{ textTransform: 'capitalize' }}>{currentUser?.role || 'student'}</p>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     );
