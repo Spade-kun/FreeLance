@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "../../services/api";
+import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import "./student.css";
 
 export default function StudentDashboard() {
@@ -10,7 +11,7 @@ export default function StudentDashboard() {
   // Get current page from URL
   const getCurrentPage = () => {
     const path = location.pathname.split('/').pop();
-    if (['dashboard', 'courses', 'activities', 'grades', 'profile'].includes(path)) {
+    if (['dashboard', 'courses', 'activities', 'grades', 'profile', 'payment'].includes(path)) {
       return path;
     }
     return 'dashboard';
@@ -44,6 +45,12 @@ export default function StudentDashboard() {
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [submissionText, setSubmissionText] = useState("");
   const [submissionFile, setSubmissionFile] = useState(null);
+
+  // Payment state
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentDescription, setPaymentDescription] = useState('Tuition Fee');
+  const [showPayPalButtons, setShowPayPalButtons] = useState(false);
+  const [paymentHistory, setPaymentHistory] = useState([]);
 
   useEffect(() => {
     loadUserData();
@@ -929,12 +936,241 @@ export default function StudentDashboard() {
     );
   };
 
+  // ---------------- Payment ----------------
+  const renderPayment = () => {
+    const handleProceedToPayment = (e) => {
+      e.preventDefault();
+      const amount = parseFloat(paymentAmount);
+      if (!amount || amount <= 0) {
+        alert('Please enter a valid amount');
+        return;
+      }
+      setShowPayPalButtons(true);
+    };
+
+    const createOrder = (data, actions) => {
+      return actions.order.create({
+        purchase_units: [{
+          description: paymentDescription,
+          amount: {
+            value: paymentAmount
+          }
+        }]
+      });
+    };
+
+    const onApprove = (data, actions) => {
+      return actions.order.capture().then((details) => {
+        // Payment successful
+        const newPayment = {
+          id: details.id,
+          date: new Date().toLocaleDateString(),
+          amount: parseFloat(paymentAmount),
+          method: 'PAYPAL',
+          description: paymentDescription,
+          status: 'Completed',
+          transactionId: details.id,
+          payer: details.payer.name.given_name + ' ' + details.payer.name.surname
+        };
+
+        setPaymentHistory([newPayment, ...paymentHistory]);
+        setPaymentAmount('');
+        setPaymentDescription('Tuition Fee');
+        setShowPayPalButtons(false);
+        
+        alert(`Payment Successful!\nTransaction ID: ${details.id}\nThank you, ${details.payer.name.given_name}!`);
+      });
+    };
+
+    const onError = (err) => {
+      console.error('PayPal Error:', err);
+      alert('Payment failed. Please try again.');
+      setShowPayPalButtons(false);
+    };
+
+    const onCancel = () => {
+      alert('Payment cancelled.');
+      setShowPayPalButtons(false);
+    };
+
+    return (
+      <PayPalScriptProvider options={{ 
+        "client-id": "AeB1hNjEO5r8nhGJ_S0NshGYGHJZ2UHrBFiRkv4DGHsrJ5mvyMKJVPZJn9JPYQInfJv9BVG7UJhJ-Gof",
+        currency: "USD"
+      }}>
+        <div>
+          {/* Payment Form */}
+          <div className="card">
+            <h2>💳 Tuition Payment with PayPal</h2>
+            
+            {!showPayPalButtons ? (
+              <form onSubmit={handleProceedToPayment} style={{ marginTop: '20px' }}>
+                <div style={{ marginBottom: '20px' }}>
+                  <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>
+                    Payment Description
+                  </label>
+                  <select
+                    value={paymentDescription}
+                    onChange={(e) => setPaymentDescription(e.target.value)}
+                    style={{ 
+                      width: '100%', 
+                      padding: '10px', 
+                      border: '1px solid #ddd', 
+                      borderRadius: '5px',
+                      fontSize: '14px'
+                    }}
+                  >
+                    <option value="Tuition Fee">Tuition Fee</option>
+                    <option value="Enrollment Fee">Enrollment Fee</option>
+                    <option value="Laboratory Fee">Laboratory Fee</option>
+                    <option value="Miscellaneous Fee">Miscellaneous Fee</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>
+                    Amount ($ USD)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    placeholder="0.00"
+                    required
+                    min="0.01"
+                    style={{ 
+                      width: '100%', 
+                      padding: '10px', 
+                      border: '1px solid #ddd', 
+                      borderRadius: '5px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+
+                <button 
+                  type="submit" 
+                  className="btn-primary"
+                  style={{ width: '100%' }}
+                >
+                  🅿️ Proceed to PayPal
+                </button>
+              </form>
+            ) : (
+              <div style={{ marginTop: '20px' }}>
+                <div style={{ 
+                  padding: '15px', 
+                  background: '#f0f9ff', 
+                  borderRadius: '5px',
+                  border: '1px solid #bae6fd',
+                  marginBottom: '20px'
+                }}>
+                  <p style={{ margin: 0, fontWeight: 'bold' }}>Payment Details:</p>
+                  <p style={{ margin: '8px 0 0 0' }}>
+                    {paymentDescription}: <strong>${paymentAmount}</strong>
+                  </p>
+                </div>
+
+                <PayPalButtons
+                  createOrder={createOrder}
+                  onApprove={onApprove}
+                  onError={onError}
+                  onCancel={onCancel}
+                  style={{ layout: "vertical" }}
+                />
+
+                <button 
+                  onClick={() => setShowPayPalButtons(false)}
+                  className="btn-secondary"
+                  style={{ width: '100%', marginTop: '15px' }}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+
+            <div style={{ 
+              marginTop: '20px', 
+              padding: '15px', 
+              background: '#fff7ed', 
+              borderRadius: '5px',
+              border: '1px solid #fed7aa'
+            }}>
+              <p className="small" style={{ margin: 0, color: '#92400e' }}>
+                <strong>ℹ️ Sandbox Mode:</strong> This is using PayPal Sandbox for testing. Use PayPal test credentials to complete payment.
+              </p>
+            </div>
+          </div>
+
+        {/* Payment History */}
+        <div className="card" style={{ marginTop: '20px' }}>
+          <h2>📜 Payment History</h2>
+          {paymentHistory.length === 0 ? (
+            <p style={{ marginTop: '20px', color: '#666' }}>No payment history yet.</p>
+          ) : (
+            <div style={{ marginTop: '20px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #ddd' }}>
+                    <th style={{ padding: '12px', textAlign: 'left' }}>Date</th>
+                    <th style={{ padding: '12px', textAlign: 'left' }}>Description</th>
+                    <th style={{ padding: '12px', textAlign: 'left' }}>Method</th>
+                    <th style={{ padding: '12px', textAlign: 'right' }}>Amount</th>
+                    <th style={{ padding: '12px', textAlign: 'center' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paymentHistory.map((payment) => (
+                    <tr key={payment.id} style={{ borderBottom: '1px solid #eee' }}>
+                      <td style={{ padding: '12px' }}>{payment.date}</td>
+                      <td style={{ padding: '12px' }}>{payment.description}</td>
+                      <td style={{ padding: '12px' }}>
+                        <span style={{ 
+                          padding: '4px 8px', 
+                          background: payment.method === 'GCASH' ? '#e0f2fe' : '#fef3c7',
+                          color: payment.method === 'GCASH' ? '#0369a1' : '#92400e',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: 'bold'
+                        }}>
+                          {payment.method}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'right', fontWeight: 'bold' }}>
+                        {payment.method === 'GCASH' ? '₱' : '$'}{payment.amount.toFixed(2)}
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'center' }}>
+                        <span style={{ 
+                          padding: '4px 12px', 
+                          background: '#fef3c7',
+                          color: '#92400e',
+                          borderRadius: '12px',
+                          fontSize: '12px'
+                        }}>
+                          {payment.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+        </div>
+      </PayPalScriptProvider>
+    );
+  };
+
   const pageNames = {
     dashboard: 'Dashboard',
     courses: 'My Courses',
     activities: 'Activities',
     grades: 'Grades',
-    profile: 'Profile'
+    profile: 'Profile',
+    payment: 'Payment'
   };
 
   return (
@@ -977,6 +1213,14 @@ export default function StudentDashboard() {
           </li>
           <li>
             <button 
+              onClick={() => navigateToPage('payment')}
+              className={page === 'payment' ? 'active' : ''}
+            >
+              💳 Payment
+            </button>
+          </li>
+          <li>
+            <button 
               onClick={() => navigateToPage('profile')}
               className={page === 'profile' ? 'active' : ''}
             >
@@ -1005,6 +1249,7 @@ export default function StudentDashboard() {
         {page === "courses" && renderCourses()}
         {page === "activities" && renderActivities()}
         {page === "grades" && renderGrades()}
+        {page === "payment" && renderPayment()}
         {page === "profile" && renderProfile()}
       </main>
     </div>
