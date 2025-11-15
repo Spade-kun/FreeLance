@@ -263,6 +263,31 @@ class APIService {
     return this.delete(`/courses/enrollments/${id}`);
   }
 
+  // Attendance
+  async getSectionAttendance(sectionId) {
+    return this.get(`/attendance/section/${sectionId}`);
+  }
+
+  async getAttendanceByDate(sectionId, date) {
+    return this.get(`/attendance/section/${sectionId}/date?date=${date}`);
+  }
+
+  async getSectionStudents(sectionId) {
+    return this.get(`/attendance/section/${sectionId}/students`);
+  }
+
+  async saveAttendance(data) {
+    return this.post('/attendance', data);
+  }
+
+  async getAttendanceStats(sectionId) {
+    return this.get(`/attendance/section/${sectionId}/stats`);
+  }
+
+  async deleteAttendance(attendanceId) {
+    return this.delete(`/attendance/${attendanceId}`);
+  }
+
   // ==================== CONTENT API ====================
 
   // Announcements

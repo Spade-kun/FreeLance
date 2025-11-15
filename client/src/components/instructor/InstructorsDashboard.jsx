@@ -12,7 +12,7 @@ export default function InstructorDashboard() {
   // Get current page from URL
   const getCurrentPage = () => {
     const path = location.pathname.split('/').pop();
-    if (['dashboard', 'profile', 'courses', 'materials', 'assessment', 'reports'].includes(path)) {
+    if (['dashboard', 'profile', 'courses', 'materials', 'assessment', 'attendance', 'reports'].includes(path)) {
       return path;
     }
     return 'dashboard';
@@ -59,6 +59,16 @@ export default function InstructorDashboard() {
 
   // Instructor profile data
   const [instructorProfile, setInstructorProfile] = useState(null);
+  
+  // Attendance data
+  const [selectedAttendanceCourse, setSelectedAttendanceCourse] = useState(null);
+  const [selectedSection, setSelectedSection] = useState(null);
+  const [sections, setSections] = useState([]);
+  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [sectionStudents, setSectionStudents] = useState([]);
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [attendanceStats, setAttendanceStats] = useState(null);
+  const [loadingAttendance, setLoadingAttendance] = useState(false);
   
   // Modal state
   const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'success' });
@@ -2181,6 +2191,476 @@ export default function InstructorDashboard() {
     }
   }, [page, currentUser]);
 
+  // ---------------- Attendance Management ----------------
+  
+  const fetchCourseSections = async (courseId) => {
+    try {
+      setLoadingAttendance(true);
+      const response = await api.getCourseSections(courseId);
+      if (response.success) {
+        setSections(response.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching sections:', error);
+      setModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to load course sections',
+        type: 'error'
+      });
+    } finally {
+      setLoadingAttendance(false);
+    }
+  };
+
+  const fetchSectionStudents = async (sectionId) => {
+    try {
+      setLoadingAttendance(true);
+      const [enrollmentsResponse, studentsResponse] = await Promise.all([
+        api.getEnrollments(),
+        api.getStudents()
+      ]);
+
+      if (enrollmentsResponse.success && studentsResponse.success) {
+        const allEnrollments = enrollmentsResponse.data || [];
+        const allStudents = studentsResponse.data || [];
+
+        // Filter enrollments for this section only
+        const sectionEnrollments = allEnrollments.filter(
+          enrollment => enrollment.sectionId === sectionId || 
+                       enrollment.sectionId?._id === sectionId ||
+                       enrollment.sectionId?.toString() === sectionId.toString()
+        );
+
+        // Map enrollments with student details
+        const studentsWithDetails = sectionEnrollments.map(enrollment => {
+          const studentId = enrollment.studentId?._id || enrollment.studentId;
+          const student = allStudents.find(s => 
+            s._id === studentId || 
+            s._id?.toString() === studentId?.toString()
+          );
+          
+          return {
+            studentId: studentId,
+            enrollmentId: enrollment.enrollmentId,
+            status: enrollment.status,
+            studentDetails: student || { 
+              firstName: 'Unknown', 
+              lastName: 'Student', 
+              studentId: 'N/A' 
+            }
+          };
+        });
+
+        console.log('Loaded students for section:', studentsWithDetails);
+        setSectionStudents(studentsWithDetails);
+        
+        // Try to load existing attendance for selected date
+        if (attendanceDate) {
+          await fetchAttendanceForDate(sectionId, attendanceDate);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      setModal({
+        isOpen: true,
+        title: 'Error',
+        message: `Failed to load students: ${error.message}`,
+        type: 'error'
+      });
+    } finally {
+      setLoadingAttendance(false);
+    }
+  };
+
+  const fetchAttendanceForDate = async (sectionId, date) => {
+    try {
+      const response = await api.getAttendanceByDate(sectionId, date);
+      if (response.success && response.data) {
+        setAttendanceRecords(response.data.records || []);
+      } else {
+        setAttendanceRecords([]);
+      }
+    } catch (error) {
+      console.error('Error fetching attendance:', error);
+      setAttendanceRecords([]);
+    }
+  };
+
+  const fetchAttendanceStats = async (sectionId) => {
+    try {
+      const response = await api.getAttendanceStats(sectionId);
+      if (response.success) {
+        setAttendanceStats(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching attendance stats:', error);
+    }
+  };
+
+  const handleAttendanceStatusChange = (studentId, status) => {
+    setAttendanceRecords(prev => {
+      const existing = prev.find(r => r.studentId.toString() === studentId.toString());
+      if (existing) {
+        return prev.map(r =>
+          r.studentId.toString() === studentId.toString() ? { ...r, status } : r
+        );
+      } else {
+        return [...prev, { studentId, status, remarks: '' }];
+      }
+    });
+  };
+
+  const handleSaveAttendance = async () => {
+    if (!selectedSection) {
+      setModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Please select a section',
+        type: 'warning'
+      });
+      return;
+    }
+
+    if (!currentUser) {
+      setModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'User information not found. Please login again.',
+        type: 'error'
+      });
+      return;
+    }
+
+    try {
+      setLoadingAttendance(true);
+
+      // Get instructor ID from user object
+      const instructorId = currentUser._id || currentUser.userId || currentUser.id;
+      
+      console.log('Current User:', currentUser);
+      console.log('Instructor ID:', instructorId);
+
+      if (!instructorId) {
+        setModal({
+          isOpen: true,
+          title: 'Error',
+          message: 'Instructor ID not found. Please login again.',
+          type: 'error'
+        });
+        return;
+      }
+
+      // Ensure all students have a record
+      const allRecords = sectionStudents.map(student => {
+        const existing = attendanceRecords.find(
+          r => r.studentId.toString() === student.studentId.toString()
+        );
+        return existing || { studentId: student.studentId, status: 'absent', remarks: '' };
+      });
+
+      const attendanceData = {
+        sectionId: selectedSection._id,
+        courseId: selectedAttendanceCourse._id,
+        date: attendanceDate,
+        records: allRecords,
+        notes: '',
+        instructorId: instructorId
+      };
+
+      console.log('Sending attendance data:', attendanceData);
+
+      const response = await api.saveAttendance(attendanceData);
+      
+      if (response.success) {
+        setModal({
+          isOpen: true,
+          title: 'Success',
+          message: 'Attendance saved successfully!',
+          type: 'success'
+        });
+        
+        // Refresh attendance stats
+        await fetchAttendanceStats(selectedSection._id);
+      }
+    } catch (error) {
+      console.error('Error saving attendance:', error);
+      setModal({
+        isOpen: true,
+        title: 'Error',
+        message: error.message || 'Failed to save attendance',
+        type: 'error'
+      });
+    } finally {
+      setLoadingAttendance(false);
+    }
+  };
+
+  const renderAttendance = () => {
+    return (
+      <div>
+        <div className="card" style={{ marginBottom: '16px' }}>
+          <h2>Attendance Management</h2>
+          <p className="muted small">Track student attendance for your sections</p>
+        </div>
+
+        {/* Course Selection */}
+        <div className="card" style={{ marginBottom: '16px' }}>
+          <h3>Select Course & Section</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '12px' }}>
+            <div>
+              <label className="small" style={{ display: 'block', marginBottom: '4px' }}>Course</label>
+              <select
+                value={selectedAttendanceCourse?._id || ''}
+                onChange={(e) => {
+                  const course = instructorCourses.find(c => c._id === e.target.value);
+                  setSelectedAttendanceCourse(course);
+                  setSelectedSection(null);
+                  setSectionStudents([]);
+                  setAttendanceRecords([]);
+                  if (course) fetchCourseSections(course._id);
+                }}
+                style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+              >
+                <option value="">-- Select Course --</option>
+                {instructorCourses.map(course => (
+                  <option key={course._id} value={course._id}>
+                    {course.courseCode} - {course.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="small" style={{ display: 'block', marginBottom: '4px' }}>Section</label>
+              <select
+                value={selectedSection?._id || ''}
+                onChange={(e) => {
+                  const section = sections.find(s => s._id === e.target.value);
+                  setSelectedSection(section);
+                  setSectionStudents([]);
+                  setAttendanceRecords([]);
+                  if (section) {
+                    fetchSectionStudents(section._id);
+                    fetchAttendanceStats(section._id);
+                  }
+                }}
+                style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+                disabled={!selectedAttendanceCourse}
+              >
+                <option value="">-- Select Section --</option>
+                {sections.map(section => (
+                  <option key={section._id} value={section._id}>
+                    {section.sectionName} ({section.enrolled}/{section.capacity} students)
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {selectedSection && (
+            <div style={{ marginTop: '16px', padding: '12px', background: '#f0f9ff', borderRadius: '8px' }}>
+              <p className="small" style={{ margin: 0 }}>
+                <strong>Schedule:</strong> {selectedSection.schedule?.map(s => `${s.day} ${s.startTime}-${s.endTime}`).join(', ') || 'Not set'}
+              </p>
+              <p className="small" style={{ margin: '4px 0 0' }}>
+                <strong>Room:</strong> {selectedSection.room || 'Not set'}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Date Selection */}
+        {selectedSection && (
+          <div className="card" style={{ marginBottom: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <label className="small" style={{ display: 'block', marginBottom: '4px' }}>Attendance Date</label>
+                <input
+                  type="date"
+                  value={attendanceDate}
+                  onChange={(e) => {
+                    setAttendanceDate(e.target.value);
+                    fetchAttendanceForDate(selectedSection._id, e.target.value);
+                  }}
+                  style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+                />
+              </div>
+              <button
+                className="btn primary"
+                onClick={handleSaveAttendance}
+                disabled={loadingAttendance || sectionStudents.length === 0}
+              >
+                💾 Save Attendance
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Attendance Table */}
+        {loadingAttendance && selectedSection && (
+          <div className="card">
+            <p className="muted" style={{ textAlign: 'center', padding: '20px' }}>
+              Loading students...
+            </p>
+          </div>
+        )}
+
+        {!loadingAttendance && sectionStudents.length > 0 && (
+          <div className="card">
+            <h3>Student Attendance ({sectionStudents.length} students)</h3>
+            <table style={{ marginTop: '12px' }}>
+              <thead>
+                <tr>
+                  <th>Student ID</th>
+                  <th>Name</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sectionStudents.map((student) => {
+                  const record = attendanceRecords.find(
+                    r => r.studentId?.toString() === student.studentId?.toString()
+                  );
+                  const status = record?.status || 'absent';
+
+                  return (
+                    <tr key={student.studentId || student.enrollmentId}>
+                      <td>{student.studentDetails?.studentId || 'N/A'}</td>
+                      <td>{`${student.studentDetails?.firstName || 'Unknown'} ${student.studentDetails?.lastName || 'Student'}`}</td>
+                      <td>
+                        <span
+                          className="small"
+                          style={{
+                            padding: '4px 12px',
+                            borderRadius: '12px',
+                            background: 
+                              status === 'present' ? '#dcfce7' :
+                              status === 'late' ? '#fef3c7' :
+                              status === 'excused' ? '#dbeafe' : '#fee2e2',
+                            color:
+                              status === 'present' ? '#16a34a' :
+                              status === 'late' ? '#ca8a04' :
+                              status === 'excused' ? '#2563eb' : '#dc2626'
+                          }}
+                        >
+                          {status.charAt(0).toUpperCase() + status.slice(1)}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <button
+                            className={`btn small ${status === 'present' ? 'primary' : 'ghost'}`}
+                            onClick={() => handleAttendanceStatusChange(student.studentId, 'present')}
+                            title="Present"
+                          >
+                            ✓
+                          </button>
+                          <button
+                            className={`btn small ${status === 'late' ? 'primary' : 'ghost'}`}
+                            onClick={() => handleAttendanceStatusChange(student.studentId, 'late')}
+                            title="Late"
+                          >
+                            ⏰
+                          </button>
+                          <button
+                            className={`btn small ${status === 'excused' ? 'primary' : 'ghost'}`}
+                            onClick={() => handleAttendanceStatusChange(student.studentId, 'excused')}
+                            title="Excused"
+                          >
+                            📋
+                          </button>
+                          <button
+                            className={`btn small ${status === 'absent' ? 'danger' : 'ghost'}`}
+                            onClick={() => handleAttendanceStatusChange(student.studentId, 'absent')}
+                            title="Absent"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Attendance Statistics */}
+        {attendanceStats && attendanceStats.totalSessions > 0 && (
+          <div className="card" style={{ marginTop: '16px' }}>
+            <h3>Attendance Statistics</h3>
+            <p className="small muted">Total Sessions: {attendanceStats.totalSessions}</p>
+            <table style={{ marginTop: '12px' }}>
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Present</th>
+                  <th>Late</th>
+                  <th>Excused</th>
+                  <th>Absent</th>
+                  {/* <th>Attendance Rate</th> */}
+                </tr>
+              </thead>
+              <tbody>
+                {attendanceStats.studentStats.map((stat) => {
+                  const student = sectionStudents.find(
+                    s => s.studentId.toString() === stat.studentId.toString()
+                  );
+                  return (
+                    <tr key={stat.studentId}>
+                      <td>
+                        {student 
+                          ? `${student.studentDetails.firstName} ${student.studentDetails.lastName}`
+                          : 'Unknown Student'
+                        }
+                      </td>
+                      <td>{stat.present}</td>
+                      <td>{stat.late}</td>
+                      <td>{stat.excused}</td>
+                      <td>{stat.absent}</td>
+                      {/* <td>
+                        <span
+                          className="small"
+                          style={{
+                            padding: '4px 8px',
+                            borderRadius: '12px',
+                            background: stat.attendanceRate >= 75 ? '#dcfce7' : '#fee2e2',
+                            color: stat.attendanceRate >= 75 ? '#16a34a' : '#dc2626'
+                          }}
+                        >
+                          {stat.attendanceRate}%
+                        </span>
+                      </td> */}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {!loadingAttendance && selectedSection && sectionStudents.length === 0 && (
+          <div className="card">
+            <p className="muted" style={{ textAlign: 'center', padding: '40px 0' }}>
+              No students enrolled in this section yet
+            </p>
+          </div>
+        )}
+
+        {!selectedSection && (
+          <div className="card">
+            <p className="muted" style={{ textAlign: 'center', padding: '40px 0' }}>
+              Please select a course and section to manage attendance
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderReports = () => {
     return (
       <div>
@@ -2281,6 +2761,7 @@ export default function InstructorDashboard() {
       courses: 'My Courses',
       materials: 'Learning Materials',
       assessment: 'Assessment & Grading',
+      attendance: 'Attendance Management',
       reports: 'Reports'
     };
     return titles[page] || 'Dashboard';
@@ -2344,6 +2825,14 @@ export default function InstructorDashboard() {
           </li>
           <li>
             <button 
+              className={page === "attendance" ? "active" : ""} 
+              onClick={() => navigateToPage("attendance")}
+            >
+              ✅ Attendance
+            </button>
+          </li>
+          <li>
+            <button 
               className={page === "reports" ? "active" : ""} 
               onClick={() => navigateToPage("reports")}
             >
@@ -2382,6 +2871,7 @@ export default function InstructorDashboard() {
           {page === "courses" && renderCourses()}
           {page === "materials" && renderMaterials()}
           {page === "assessment" && renderAssessment()}
+          {page === "attendance" && renderAttendance()}
           {page === "reports" && renderReports()}
         </div>
       </main>

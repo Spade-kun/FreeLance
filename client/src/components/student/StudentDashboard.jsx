@@ -13,7 +13,7 @@ export default function StudentDashboard() {
   // Get current page from URL
   const getCurrentPage = () => {
     const path = location.pathname.split('/').pop();
-    if (['dashboard', 'courses', 'activities', 'grades', 'profile', 'payment'].includes(path)) {
+    if (['dashboard', 'courses', 'activities', 'grades', 'attendance', 'profile', 'payment'].includes(path)) {
       return path;
     }
     return 'dashboard';
@@ -57,6 +57,12 @@ export default function StudentDashboard() {
   // Profile state
   const [studentProfile, setStudentProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  
+  // Attendance state
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [attendanceStats, setAttendanceStats] = useState(null);
+  const [selectedCourseForAttendance, setSelectedCourseForAttendance] = useState(null);
+  const [loadingAttendance, setLoadingAttendance] = useState(false);
   
   // Modal state
   const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'success' });
@@ -938,6 +944,219 @@ export default function StudentDashboard() {
     );
   };
 
+  // ---------------- Attendance ----------------
+  const fetchStudentAttendance = async (courseId, sectionId) => {
+    try {
+      setLoadingAttendance(true);
+      
+      // Get the current student ID
+      const studentId = currentUser?.userId || currentUser?._id || currentUser?.id;
+      
+      console.log('Fetching attendance for student:', studentId, 'section:', sectionId);
+      
+      // Get attendance records for the section
+      const response = await api.getSectionAttendance(sectionId);
+      
+      console.log('Attendance API response:', response);
+      
+      if (response.success) {
+        const allRecords = response.data || [];
+        
+        console.log('Total attendance records:', allRecords.length);
+        
+        // Filter records that include this student
+        const studentRecords = allRecords.map(attendance => {
+          const studentRecord = attendance.records?.find(r => {
+            const recordStudentId = typeof r.studentId === 'object' ? r.studentId._id : r.studentId;
+            return recordStudentId?.toString() === studentId?.toString();
+          });
+          
+          if (studentRecord) {
+            console.log('Found attendance record:', attendance.date, studentRecord.status);
+            return {
+              date: attendance.date,
+              status: studentRecord.status,
+              remarks: studentRecord.remarks
+            };
+          }
+          return null;
+        }).filter(r => r !== null);
+        
+        console.log('Filtered student records:', studentRecords.length);
+        
+        setAttendanceRecords(studentRecords);
+        
+        // Calculate statistics
+        const present = studentRecords.filter(r => r.status === 'present').length;
+        const late = studentRecords.filter(r => r.status === 'late').length;
+        const excused = studentRecords.filter(r => r.status === 'excused').length;
+        const absent = studentRecords.filter(r => r.status === 'absent').length;
+        const total = studentRecords.length;
+        const attendanceRate = total > 0 ? (((present + late) / total) * 100).toFixed(2) : 0;
+        
+        setAttendanceStats({
+          present,
+          late,
+          excused,
+          absent,
+          total,
+          attendanceRate
+        });
+      } else {
+        console.error('API response not successful:', response);
+      }
+    } catch (error) {
+      console.error('Error fetching attendance:', error);
+      setModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to load attendance records',
+        type: 'error'
+      });
+    } finally {
+      setLoadingAttendance(false);
+    }
+  };
+
+  const renderAttendance = () => {
+    return (
+      <div>
+        <div className="card" style={{ marginBottom: '16px' }}>
+          <h2>My Attendance</h2>
+          <p className="muted small">View your attendance records for enrolled courses</p>
+        </div>
+
+        {/* Course Selection */}
+        <div className="card" style={{ marginBottom: '16px' }}>
+          <h3>Select Course</h3>
+          <select
+            value={selectedCourseForAttendance?._id || ''}
+            onChange={(e) => {
+              const selectedCourseId = e.target.value;
+              if (selectedCourseId) {
+                const enrollment = enrollments.find(enr => {
+                  const courseId = typeof enr.courseId === 'object' ? enr.courseId._id : enr.courseId;
+                  return courseId === selectedCourseId;
+                });
+                
+                if (enrollment) {
+                  const course = courses.find(c => c._id === selectedCourseId);
+                  const sectionId = typeof enrollment.sectionId === 'object' ? enrollment.sectionId._id : enrollment.sectionId;
+                  
+                  setSelectedCourseForAttendance(course);
+                  setAttendanceRecords([]);
+                  setAttendanceStats(null);
+                  
+                  console.log('Selected course:', selectedCourseId, 'Section:', sectionId);
+                  fetchStudentAttendance(selectedCourseId, sectionId);
+                }
+              }
+            }}
+            style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ddd' }}
+          >
+            <option value="">-- Select a Course --</option>
+            {enrollments.map(enrollment => {
+              const courseId = typeof enrollment.courseId === 'object' ? enrollment.courseId._id : enrollment.courseId;
+              const course = courses.find(c => c._id === courseId);
+              return course ? (
+                <option key={enrollment._id} value={course._id}>
+                  {course.courseCode} - {course.courseName}
+                </option>
+              ) : null;
+            })}
+          </select>
+        </div>
+
+        {/* Attendance Statistics */}
+        {attendanceStats && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+            <div className="card small" style={{ background: '#dcfce7', border: '1px solid #16a34a' }}>
+              <h3 style={{ margin: 0, fontSize: '2rem', color: '#16a34a' }}>{attendanceStats.present}</h3>
+              <p className="muted small" style={{ margin: '4px 0 0' }}>Present</p>
+            </div>
+            <div className="card small" style={{ background: '#fef3c7', border: '1px solid #d97706' }}>
+              <h3 style={{ margin: 0, fontSize: '2rem', color: '#d97706' }}>{attendanceStats.late}</h3>
+              <p className="muted small" style={{ margin: '4px 0 0' }}>Late</p>
+            </div>
+            <div className="card small" style={{ background: '#dbeafe', border: '1px solid #2563eb' }}>
+              <h3 style={{ margin: 0, fontSize: '2rem', color: '#2563eb' }}>{attendanceStats.excused}</h3>
+              <p className="muted small" style={{ margin: '4px 0 0' }}>Excused</p>
+            </div>
+            <div className="card small" style={{ background: '#fee2e2', border: '1px solid #dc2626' }}>
+              <h3 style={{ margin: 0, fontSize: '2rem', color: '#dc2626' }}>{attendanceStats.absent}</h3>
+              <p className="muted small" style={{ margin: '4px 0 0' }}>Absent</p>
+            </div>
+            {/* <div className="card small" style={{ background: '#f3f4f6', border: '1px solid #6b7280' }}>
+              <h3 style={{ margin: 0, fontSize: '1.5rem', color: '#374151' }}>
+                {attendanceStats.attendanceRate}%
+              </h3>
+              <p className="muted small" style={{ margin: '4px 0 0' }}>Attendance Rate</p>
+            </div> */}
+          </div>
+        )}
+
+        {/* Attendance Records Table */}
+        {loadingAttendance ? (
+          <div className="card">
+            <p className="muted" style={{ textAlign: 'center', padding: '20px' }}>Loading attendance records...</p>
+          </div>
+        ) : attendanceRecords.length > 0 ? (
+          <div className="card">
+            <h3>Attendance Records ({attendanceRecords.length} sessions)</h3>
+            <table style={{ marginTop: '12px' }}>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Status</th>
+                  {/* <th>Remarks</th> */}
+                </tr>
+              </thead>
+              <tbody>
+                {attendanceRecords.map((record, index) => (
+                  <tr key={index}>
+                    <td>{new Date(record.date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</td>
+                    <td>
+                      <span
+                        className="small"
+                        style={{
+                          padding: '4px 12px',
+                          borderRadius: '12px',
+                          background: 
+                            record.status === 'present' ? '#dcfce7' :
+                            record.status === 'late' ? '#fef3c7' :
+                            record.status === 'excused' ? '#dbeafe' : '#fee2e2',
+                          color:
+                            record.status === 'present' ? '#16a34a' :
+                            record.status === 'late' ? '#d97706' :
+                            record.status === 'excused' ? '#2563eb' : '#dc2626'
+                        }}
+                      >
+                        {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
+                      </span>
+                    </td>
+                    {/* <td>{record.remarks || '-'}</td> */}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : selectedCourseForAttendance ? (
+          <div className="card">
+            <p className="muted" style={{ textAlign: 'center', padding: '40px 0' }}>
+              No attendance records found for this course
+            </p>
+          </div>
+        ) : (
+          <div className="card">
+            <p className="muted" style={{ textAlign: 'center', padding: '40px 0' }}>
+              Please select a course to view attendance records
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // ---------------- Profile ----------------
   const renderProfile = () => {
     // Fetch profile data when profile page is opened
@@ -1324,6 +1543,7 @@ export default function StudentDashboard() {
     courses: 'My Courses',
     activities: 'Activities',
     grades: 'Grades',
+    attendance: 'My Attendance',
     profile: 'Profile',
     payment: 'Payment'
   };
@@ -1387,6 +1607,14 @@ export default function StudentDashboard() {
           </li>
           <li>
             <button 
+              onClick={() => navigateToPage('attendance')}
+              className={page === 'attendance' ? 'active' : ''}
+            >
+              ✅ Attendance
+            </button>
+          </li>
+          <li>
+            <button 
               onClick={() => navigateToPage('payment')}
               className={page === 'payment' ? 'active' : ''}
             >
@@ -1423,6 +1651,7 @@ export default function StudentDashboard() {
         {page === "courses" && renderCourses()}
         {page === "activities" && renderActivities()}
         {page === "grades" && renderGrades()}
+        {page === "attendance" && renderAttendance()}
         {page === "payment" && renderPayment()}
         {page === "profile" && renderProfile()}
       </main>

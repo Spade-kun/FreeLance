@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './config/database.js';
 import courseRoutes from './routes/courseRoutes.js';
+import attendanceRoutes from './routes/attendance.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 dotenv.config();
@@ -21,6 +22,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/courses', courseRoutes);
+app.use('/api/attendance', attendanceRoutes);
 app.use(errorHandler);
 
 app.listen(PORT, () => {
