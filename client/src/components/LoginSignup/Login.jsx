@@ -61,7 +61,7 @@ export default function Login() {
 
         // Redirect based on role
         if (user.role === "admin") navigate("/admin/dashboard");
-        else if (user.role === "instructor") navigate("/instructor");
+        else if (user.role === "instructor") navigate("/instructor/dashboard");
         else navigate("/student");
       }
     } catch (error) {

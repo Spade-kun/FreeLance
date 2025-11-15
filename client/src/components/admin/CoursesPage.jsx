@@ -679,113 +679,168 @@ export default function CoursesPage() {
             </div>
           )}
 
-          {/* Enrollments Table */}
-          <table className="table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Student ID</th>
-                <th>Student Name</th>
-                <th>Course</th>
-                <th>Section</th>
-                <th>Status</th>
-                <th>Enrollment Date</th>
-                <th width="100">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {enrollments.length === 0 ? (
-                <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: '20px' }}>
-                    <span className="muted">No enrollments yet</span>
-                  </td>
-                </tr>
-              ) : (
-                enrollments.map(enrollment => {
-                  const student = students.find(s => s._id === enrollment.studentId);
-                  const course = courses.find(c => c._id === enrollment.courseId);
-                  const section = sections[enrollment.courseId]?.find(s => s._id === enrollment.sectionId);
+          {/* Enrollments Grouped by Course */}
+          {enrollments.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px', background: '#f8f9fa', borderRadius: '8px' }}>
+              <p className="muted">No enrollments yet</p>
+            </div>
+          ) : (
+            (() => {
+              // Group enrollments by course
+              const enrollmentsByCourse = {};
+              enrollments.forEach(enrollment => {
+                const course = enrollment.courseId && typeof enrollment.courseId === 'object' 
+                  ? enrollment.courseId 
+                  : courses.find(c => c._id === enrollment.courseId);
+                
+                const courseId = course?._id || 'unknown';
+                if (!enrollmentsByCourse[courseId]) {
+                  enrollmentsByCourse[courseId] = {
+                    course: course,
+                    enrollments: []
+                  };
+                }
+                enrollmentsByCourse[courseId].enrollments.push(enrollment);
+              });
 
-                  return (
-                    <tr key={enrollment._id}>
-                      <td>
-                        <span style={{ 
-                          fontFamily: 'monospace', 
-                          fontSize: '0.85rem', 
-                          fontWeight: 'bold',
-                          color: '#666' 
-                        }}>
-                          {enrollment.enrollmentId || 'N/A'}
-                        </span>
-                      </td>
-                      <td>
-                        <span style={{ 
-                          fontFamily: 'monospace', 
-                          fontSize: '0.85rem',
-                          color: '#0284c7',
-                          background: '#f0f9ff',
-                          padding: '2px 6px',
-                          borderRadius: '4px'
-                        }}>
-                          {student?.studentId || 'N/A'}
-                        </span>
-                      </td>
-                      <td style={{ fontWeight: '500' }}>
-                        {student ? `${student.firstName} ${student.lastName}` : 'Unknown'}
-                      </td>
-                      <td>
+              return Object.entries(enrollmentsByCourse).map(([courseId, { course, enrollments: courseEnrollments }]) => (
+                <div key={courseId} style={{ marginBottom: '24px' }}>
+                  {/* Course Header */}
+                  <div style={{ 
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    padding: '12px 16px',
+                    borderRadius: '8px 8px 0 0',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.1rem' }}>
                         {course ? (
-                          <div>
-                            <span style={{ fontWeight: '500' }}>{course.courseCode}</span>
-                            <br />
-                            <span className="muted small">{course.courseName}</span>
-                          </div>
-                        ) : 'Unknown'}
-                      </td>
-                      <td>
-                        {section ? (
-                          <span>
-                            <span style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: '#16a34a' }}>
-                              #{section.sectionId}
-                            </span>{' '}
-                            {section.sectionName}
-                          </span>
-                        ) : 'Unknown'}
-                      </td>
-                      <td>
-                        <span style={{ 
-                          padding: '4px 10px', 
-                          borderRadius: '12px', 
-                          fontSize: '0.85rem',
-                          fontWeight: '500',
-                          background: enrollment.status === 'active' ? '#f0fdf4' : 
-                                     enrollment.status === 'completed' ? '#e0e7ff' : 
-                                     enrollment.status === 'dropped' ? '#fee' : '#fef3c7',
-                          color: enrollment.status === 'active' ? '#16a34a' : 
-                                enrollment.status === 'completed' ? '#4f46e5' : 
-                                enrollment.status === 'dropped' ? '#dc2626' : '#ca8a04'
-                        }}>
-                          {enrollment.status.toUpperCase()}
-                        </span>
-                      </td>
-                      <td style={{ fontSize: '0.9rem' }}>
-                        {new Date(enrollment.enrollmentDate).toLocaleDateString()}
-                      </td>
-                      <td>
-                        <button 
-                          className="btn-danger small" 
-                          onClick={() => deleteEnrollment(enrollment._id)}
-                          style={{ padding: '4px 8px', fontSize: '0.85rem' }}
-                        >
-                          🗑️ Remove
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                          <>
+                            {course.courseCode} - {course.courseName}
+                          </>
+                        ) : (
+                          'Unknown Course'
+                        )}
+                      </h3>
+                      {course && (
+                        <p style={{ margin: '4px 0 0', fontSize: '0.85rem', opacity: 0.9 }}>
+                          {course.department || 'N/A'} • {course.level || 'N/A'} • {course.credits || 0} Credits
+                        </p>
+                      )}
+                    </div>
+                    <div style={{ 
+                      background: 'rgba(255,255,255,0.2)',
+                      padding: '6px 12px',
+                      borderRadius: '20px',
+                      fontWeight: 'bold',
+                      fontSize: '0.9rem'
+                    }}>
+                      {courseEnrollments.length} Student{courseEnrollments.length !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+
+                  {/* Course Enrollments Table */}
+                  <table className="table" style={{ marginTop: 0, borderRadius: '0 0 8px 8px', overflow: 'hidden' }}>
+                    <thead>
+                      <tr>
+                        <th>Enrollment ID</th>
+                        <th>Student ID</th>
+                        <th>Student Name</th>
+                        <th>Section</th>
+                        <th>Status</th>
+                        <th>Enrollment Date</th>
+                        <th width="100">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {courseEnrollments.map(enrollment => {
+                        const student = students.find(s => s._id === enrollment.studentId);
+                        const section = enrollment.sectionId && typeof enrollment.sectionId === 'object'
+                          ? enrollment.sectionId
+                          : sections[enrollment.courseId]?.find(s => s._id === enrollment.sectionId);
+
+                        return (
+                          <tr key={enrollment._id}>
+                            <td>
+                              <span style={{ 
+                                fontFamily: 'monospace', 
+                                fontSize: '0.85rem', 
+                                fontWeight: 'bold',
+                                color: '#666' 
+                              }}>
+                                {enrollment.enrollmentId || 'N/A'}
+                              </span>
+                            </td>
+                            <td>
+                              <span style={{ 
+                                fontFamily: 'monospace', 
+                                fontSize: '0.85rem',
+                                color: '#0284c7',
+                                background: '#f0f9ff',
+                                padding: '2px 6px',
+                                borderRadius: '4px'
+                              }}>
+                                {student?.studentId || 'N/A'}
+                              </span>
+                            </td>
+                            <td style={{ fontWeight: '500' }}>
+                              {student ? `${student.firstName} ${student.lastName}` : 'Unknown'}
+                              {student && (
+                                <div className="muted small" style={{ marginTop: '2px' }}>
+                                  {student.email}
+                                </div>
+                              )}
+                            </td>
+                            <td>
+                              {section ? (
+                                <span>
+                                  <span style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: '#16a34a' }}>
+                                    #{section.sectionId}
+                                  </span>{' '}
+                                  {section.sectionName}
+                                </span>
+                              ) : 'Unknown'}
+                            </td>
+                            <td>
+                              <span style={{ 
+                                padding: '4px 10px', 
+                                borderRadius: '12px', 
+                                fontSize: '0.85rem',
+                                fontWeight: '500',
+                                background: enrollment.status === 'active' || enrollment.status === 'enrolled' ? '#f0fdf4' : 
+                                           enrollment.status === 'completed' ? '#e0e7ff' : 
+                                           enrollment.status === 'dropped' ? '#fee' : '#fef3c7',
+                                color: enrollment.status === 'active' || enrollment.status === 'enrolled' ? '#16a34a' : 
+                                      enrollment.status === 'completed' ? '#4f46e5' : 
+                                      enrollment.status === 'dropped' ? '#dc2626' : '#ca8a04'
+                              }}>
+                                {enrollment.status.toUpperCase()}
+                              </span>
+                            </td>
+                            <td style={{ fontSize: '0.9rem' }}>
+                              {new Date(enrollment.enrollmentDate).toLocaleDateString()}
+                            </td>
+                            <td>
+                              <button 
+                                className="btn-danger small" 
+                                onClick={() => deleteEnrollment(enrollment._id)}
+                                style={{ padding: '4px 8px', fontSize: '0.85rem' }}
+                              >
+                                🗑️ Remove
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ));
+            })()
+          )}
         </>
       )}
     </div>

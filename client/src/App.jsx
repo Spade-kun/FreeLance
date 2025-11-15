@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation, Outlet } from "react-router-dom";
 
 import InstructorsPage from "./components/instructor/InstructorsDashboard.jsx";
@@ -107,9 +107,9 @@ export default function App() {
           <Route path="reports" element={<ReportsPage />} />
         </Route>
 
-        {/* Instructor Dashboard - Protected */}
+        {/* Instructor Dashboard - Protected with nested routes */}
         <Route 
-          path="/instructor" 
+          path="/instructor/*" 
           element={
             <ProtectedRoute requiredRole="instructor">
               <InstructorsPage />

@@ -329,7 +329,9 @@ class APIService {
   }
 
   async createActivity(data) {
-    return this.post('/assessments/activities', data);
+    // Route expects: /assessments/courses/:courseId/activities
+    const { courseId, ...activityData } = data;
+    return this.post(`/assessments/courses/${courseId}/activities`, activityData);
   }
 
   async updateActivity(id, data) {
