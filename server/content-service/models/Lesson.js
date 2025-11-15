@@ -1,11 +1,6 @@
 import mongoose from 'mongoose';
 
 const lessonSchema = new mongoose.Schema({
-  lessonId: {
-    type: Number,
-    unique: true,
-    sparse: true
-  },
   moduleId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Module',
@@ -21,7 +16,7 @@ const lessonSchema = new mongoose.Schema({
   },
   contentType: {
     type: String,
-    enum: ['text', 'video', 'document', 'quiz', 'pdf', 'presentation', 'link', 'mixed'],
+    enum: ['text', 'video', 'pdf', 'presentation', 'link', 'mixed'],
     default: 'text'
   },
   content: {
@@ -48,28 +43,6 @@ const lessonSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true
-});
-
-// Auto-increment lessonId
-lessonSchema.pre('save', async function(next) {
-  if (!this.lessonId && !this.isNew) {
-    return next();
-  }
-  
-  if (this.isNew && !this.lessonId) {
-    try {
-      const lastLesson = await this.constructor.findOne({ lessonId: { $ne: null } })
-        .sort({ lessonId: -1 })
-        .select('lessonId')
-        .lean();
-      this.lessonId = lastLesson ? lastLesson.lessonId + 1 : 1;
-      console.log(`🆔 Auto-generated lessonId: ${this.lessonId}`);
-    } catch (error) {
-      console.error('Error generating lessonId:', error);
-      return next(error);
-    }
-  }
-  next();
 });
 
 export default mongoose.model('Lesson', lessonSchema);
