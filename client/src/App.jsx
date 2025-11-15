@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation, Outlet } from "react-router-dom";
 
 import InstructorsPage from "./components/instructor/InstructorsDashboard.jsx";
@@ -18,11 +18,15 @@ import Login from "./components/LoginSignup/Login.jsx";
 import Signup from "./components/LoginSignup/Signup.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import GoogleAuthCallback from "./components/GoogleAuthCallback.jsx";
+import Modal from "./components/Modal/Modal.jsx";
+import ConfirmModal from "./components/Modal/ConfirmModal.jsx";
 
 // ================== ADMIN LAYOUT ==================
 function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'success' });
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false });
 
   // Get current page from URL path
   const getCurrentPage = () => {
@@ -32,19 +36,30 @@ function AdminLayout() {
 
   const currentPage = getCurrentPage();
 
-  const handleLogout = async () => {
-    if (window.confirm("Are you sure you want to logout?")) {
-      try {
-        // Clear all localStorage
-        localStorage.clear();
-        alert("Logged out successfully!");
+  const handleLogout = () => {
+    setConfirmModal({ isOpen: true });
+  };
+
+  const confirmLogout = async () => {
+    try {
+      // Clear all localStorage
+      localStorage.clear();
+      
+      setModal({ 
+        isOpen: true, 
+        title: 'Goodbye!', 
+        message: 'Logged out successfully!', 
+        type: 'success' 
+      });
+      
+      setTimeout(() => {
         navigate("/login");
-      } catch (error) {
-        console.error("Logout error:", error);
-        // Still logout locally even if API call fails
-        localStorage.clear();
-        navigate("/login");
-      }
+      }, 1500);
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Still logout locally even if API call fails
+      localStorage.clear();
+      navigate("/login");
     }
   };
 
@@ -62,6 +77,25 @@ function AdminLayout() {
 
   return (
     <div className="app">
+      <Modal 
+        isOpen={modal.isOpen} 
+        onClose={() => setModal({ ...modal, isOpen: false })} 
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+      />
+      
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false })}
+        onConfirm={confirmLogout}
+        title="Confirm Logout"
+        message="Are you sure you want to logout?"
+        confirmText="OK"
+        cancelText="Cancel"
+        type="warning"
+      />
+      
       <aside className="sidebar">
         <div className="brand">LMS Admin</div>
 

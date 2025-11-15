@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "../../services/api";
+import Modal from "../Modal/Modal";
+import ConfirmModal from "../Modal/ConfirmModal";
 import "./instructor.css";
 
 export default function InstructorDashboard() {
@@ -57,6 +59,10 @@ export default function InstructorDashboard() {
 
   // Instructor profile data
   const [instructorProfile, setInstructorProfile] = useState(null);
+  
+  // Modal state
+  const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'success' });
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false });
 
   useEffect(() => {
     loadUserData();
@@ -228,11 +234,22 @@ export default function InstructorDashboard() {
   };
 
   const logout = () => {
-    if (window.confirm("Are you sure you want to logout?")) {
-      localStorage.clear();
-      alert("Logged out successfully!");
+    setConfirmModal({ isOpen: true });
+  };
+
+  const confirmLogout = () => {
+    localStorage.clear();
+    
+    setModal({ 
+      isOpen: true, 
+      title: 'Goodbye!', 
+      message: 'Logged out successfully!', 
+      type: 'success' 
+    });
+    
+    setTimeout(() => {
       navigate("/login");
-    }
+    }, 1500);
   };
 
   // ---------------- Dashboard ----------------
@@ -2271,6 +2288,25 @@ export default function InstructorDashboard() {
 
   return (
     <div className="app">
+      <Modal 
+        isOpen={modal.isOpen} 
+        onClose={() => setModal({ ...modal, isOpen: false })} 
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+      />
+      
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false })}
+        onConfirm={confirmLogout}
+        title="Confirm Logout"
+        message="Are you sure you want to logout?"
+        confirmText="OK"
+        cancelText="Cancel"
+        type="warning"
+      />
+      
       <aside className="sidebar">
         <div className="brand">📚 LMS Instructor</div>
         <ul className="nav">

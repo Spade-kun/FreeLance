@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "../../services/api";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+import Modal from "../Modal/Modal";
+import ConfirmModal from "../Modal/ConfirmModal";
 import "./student.css";
 
 export default function StudentDashboard() {
@@ -55,6 +57,10 @@ export default function StudentDashboard() {
   // Profile state
   const [studentProfile, setStudentProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  
+  // Modal state
+  const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'success' });
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false });
 
   useEffect(() => {
     loadUserData();
@@ -306,11 +312,22 @@ export default function StudentDashboard() {
   };
 
   const logout = () => {
-    if (window.confirm("Are you sure you want to logout?")) {
-      localStorage.clear();
-      alert("Logged out successfully!");
+    setConfirmModal({ isOpen: true });
+  };
+
+  const confirmLogout = () => {
+    localStorage.clear();
+    
+    setModal({ 
+      isOpen: true, 
+      title: 'Goodbye!', 
+      message: 'Logged out successfully!', 
+      type: 'success' 
+    });
+    
+    setTimeout(() => {
       navigate("/login");
-    }
+    }, 1500);
   };
 
   // ---------------- Dashboard ----------------
@@ -1313,6 +1330,25 @@ export default function StudentDashboard() {
 
   return (
     <div className="app">
+      <Modal 
+        isOpen={modal.isOpen} 
+        onClose={() => setModal({ ...modal, isOpen: false })} 
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+      />
+      
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false })}
+        onConfirm={confirmLogout}
+        title="Confirm Logout"
+        message="Are you sure you want to logout?"
+        confirmText="OK"
+        cancelText="Cancel"
+        type="warning"
+      />
+      
       <aside className="sidebar">
         <div className="brand">📚 LMS Student</div>
 

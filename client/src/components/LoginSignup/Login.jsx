@@ -3,6 +3,7 @@ import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import api from "../../services/api";
 import { useRecaptcha } from "../../context/RecaptchaContext";
 import { useGoogleAuth } from "../../context/GoogleAuthContext";
+import Modal from "../Modal/Modal";
 
 export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
@@ -12,6 +13,7 @@ export default function Login() {
   const navigate = useNavigate();
   const { getRecaptchaToken } = useRecaptcha();
   const { handleGoogleSignIn } = useGoogleAuth();
+  const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'success' });
 
   // Show error message from URL params
   useEffect(() => {
@@ -43,7 +45,12 @@ export default function Login() {
     const { email, password } = form;
 
     if (!email.trim() || !password.trim()) {
-      alert("Please fill all fields.");
+      setModal({ 
+        isOpen: true, 
+        title: 'Missing Information', 
+        message: 'Please fill all fields.', 
+        type: 'warning' 
+      });
       return;
     }
 
@@ -57,15 +64,28 @@ export default function Login() {
       
       if (response.success) {
         const user = response.data.user;
-        alert(`Welcome back, ${user.firstName || user.email}!`);
+        
+        setModal({ 
+          isOpen: true, 
+          title: 'Welcome Back!', 
+          message: `Hello, ${user.firstName || user.email}!`, 
+          type: 'success' 
+        });
 
-        // Redirect based on role
-        if (user.role === "admin") navigate("/admin/dashboard");
-        else if (user.role === "instructor") navigate("/instructor/dashboard");
-        else navigate("/student/dashboard");
+        // Redirect based on role after modal shows
+        setTimeout(() => {
+          if (user.role === "admin") navigate("/admin/dashboard");
+          else if (user.role === "instructor") navigate("/instructor/dashboard");
+          else navigate("/student/dashboard");
+        }, 1500);
       }
     } catch (error) {
-      alert(error.message || "Login failed. Please check your credentials.");
+      setModal({ 
+        isOpen: true, 
+        title: 'Login Failed', 
+        message: error.message || 'Please check your credentials.', 
+        type: 'error' 
+      });
     } finally {
       setLoading(false);
     }
@@ -77,6 +97,14 @@ export default function Login() {
 
   return (
     <div style={styles.page}>
+      <Modal 
+        isOpen={modal.isOpen} 
+        onClose={() => setModal({ ...modal, isOpen: false })} 
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+      />
+      
       <div style={styles.container}>
         <h2>Login</h2>
 
