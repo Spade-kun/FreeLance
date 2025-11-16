@@ -480,6 +480,24 @@ class APIService {
     const url = `${this.baseURL}/assessments/files/${fileId}/download`;
     window.open(url, '_blank');
   }
+
+  // =============== EMAIL API ===============
+
+  // Send new activity notification to enrolled students
+  async sendActivityNotification(activityData) {
+    return this.post('/email/send-activity-notification', activityData);
+  }
+
+  // Get email logs
+  async getEmailLogs(filters = {}) {
+    const params = new URLSearchParams(filters).toString();
+    return this.get(`/email/logs${params ? `?${params}` : ''}`);
+  }
+
+  // Test email configuration
+  async testEmail(email) {
+    return this.post('/email/test', { email });
+  }
 }
 
 // Export singleton instance

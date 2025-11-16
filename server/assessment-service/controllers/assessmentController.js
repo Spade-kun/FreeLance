@@ -1,5 +1,6 @@
 import Activity from '../models/Activity.js';
 import Submission from '../models/Submission.js';
+import axios from 'axios';
 
 // ACTIVITY CONTROLLERS
 
@@ -28,11 +29,46 @@ export const createActivity = async (req, res) => {
   try {
     const activityData = { ...req.body, courseId: req.params.courseId };
     const activity = await Activity.create(activityData);
+    
+    // Send email notification to all enrolled students (fire and forget - don't wait for completion)
+    sendNewActivityEmail(activity, req.body).catch(err => {
+      console.error('⚠️ Email notification failed (non-blocking):', err.message);
+    });
+    
     res.status(201).json({ success: true, data: activity });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 };
+
+// Helper function to send email notification
+async function sendNewActivityEmail(activity, requestBody) {
+  try {
+    console.log('📧 Triggering email notification for new activity:', activity.title);
+    
+    const emailData = {
+      _id: activity._id,
+      activityId: activity.activityId,
+      courseId: activity.courseId,
+      title: activity.title,
+      description: activity.description,
+      type: activity.type,
+      dueDate: activity.dueDate,
+      totalPoints: activity.totalPoints,
+      courseName: requestBody.courseName || 'Unknown Course',
+      courseCode: requestBody.courseCode || 'N/A',
+      instructorName: requestBody.instructorName || 'Your Instructor'
+    };
+
+    // Call email service
+    await axios.post('http://localhost:1008/api/email/send-activity-notification', emailData);
+    
+    console.log('✅ Email notification triggered successfully');
+  } catch (error) {
+    console.error('❌ Failed to send email notification:', error.message);
+    // Don't throw error - email failure should not block activity creation
+  }
+}
 
 export const updateActivity = async (req, res) => {
   try {

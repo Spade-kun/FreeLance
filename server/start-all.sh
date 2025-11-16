@@ -13,6 +13,7 @@ declare -a services=(
     "content-service:1005"
     "assessment-service:1006"
     "report-service:1007"
+    "email-service:1008"
 )
 
 # Function to start a service in background
@@ -70,6 +71,7 @@ echo "  Course Service:     http://localhost:1004"
 echo "  Content Service:    http://localhost:1005"
 echo "  Assessment Service: http://localhost:1006"
 echo "  Report Service:     http://localhost:1007"
+echo "  Email Service:      http://localhost:1008"
 echo ""
 echo "📝 Logs are in: ./logs/"
 echo ""

@@ -6,6 +6,7 @@ import contentRoutes from './contentRoutes.js';
 import assessmentRoutes from './assessmentRoutes.js';
 import reportRoutes from './reportRoutes.js';
 import attendanceRoutes from './attendanceRoutes.js';
+import emailRoutes from './emailRoutes.js';
 
 const router = express.Router();
 
@@ -17,5 +18,6 @@ router.use('/content', contentRoutes);
 router.use('/assessments', assessmentRoutes);
 router.use('/reports', reportRoutes);
 router.use('/attendance', attendanceRoutes);
+router.use('/email', emailRoutes);
 
 export default router;

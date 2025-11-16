@@ -1449,6 +1449,7 @@ export default function InstructorDashboard() {
     try {
       setLoading(true);
       const instructorId = currentUser?.userId || currentUser?.id;
+      const instructorName = `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim() || currentUser?.email;
       
       await api.createActivity({
         courseId: selectedAssessmentCourse._id,
@@ -1462,10 +1463,14 @@ export default function InstructorDashboard() {
         availableFrom: activityAvailableFrom ? new Date(activityAvailableFrom).toISOString() : new Date().toISOString(),
         allowLateSubmission: activityAllowLate,
         latePenalty: activityAllowLate && activityLatePenalty ? Number(activityLatePenalty) : 0,
-        isPublished: activityIsPublished
+        isPublished: activityIsPublished,
+        // Add data for email notifications
+        courseName: selectedAssessmentCourse.courseName,
+        courseCode: selectedAssessmentCourse.courseCode,
+        instructorName: instructorName
       });
       
-      alert('✅ Activity created successfully!');
+      alert('✅ Activity created successfully!\n📧 Email notifications sent to enrolled students.');
       resetActivityForm();
       await fetchActivities(selectedAssessmentCourse._id);
     } catch (err) {
