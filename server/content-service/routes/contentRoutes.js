@@ -14,8 +14,11 @@ import {
   getLessonById,
   createLesson,
   updateLesson,
-  deleteLesson
+  deleteLesson,
+  downloadFile,
+  deleteModuleFile
 } from '../controllers/contentController.js';
+import upload from '../middleware/upload.js';
 
 const router = express.Router();
 
@@ -29,9 +32,13 @@ router.delete('/announcements/:id', deleteAnnouncement);
 // Module routes
 router.get('/courses/:courseId/modules', getModulesByCourse);
 router.get('/modules/:id', getModuleById);
-router.post('/courses/:courseId/modules', createModule);
-router.put('/modules/:id', updateModule);
+router.post('/courses/:courseId/modules', upload.array('files', 10), createModule);
+router.put('/modules/:id', upload.array('files', 10), updateModule);
 router.delete('/modules/:id', deleteModule);
+
+// File routes
+router.get('/files/:filename', downloadFile);
+router.delete('/modules/:moduleId/files/:filename', deleteModuleFile);
 
 // Lesson routes
 router.get('/modules/:moduleId/lessons', getLessonsByModule);

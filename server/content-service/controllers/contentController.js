@@ -93,6 +93,17 @@ export const getModuleById = async (req, res) => {
 export const createModule = async (req, res) => {
   try {
     const moduleData = { ...req.body, courseId: req.params.courseId };
+    
+    // Handle uploaded files
+    if (req.files && req.files.length > 0) {
+      moduleData.files = req.files.map(file => ({
+        fileName: file.originalname,
+        fileUrl: `/api/content/files/${file.filename}`,
+        fileSize: file.size,
+        fileType: file.mimetype
+      }));
+    }
+    
     const module = await Module.create(moduleData);
     res.status(201).json({ success: true, data: module });
   } catch (error) {
@@ -102,7 +113,27 @@ export const createModule = async (req, res) => {
 
 export const updateModule = async (req, res) => {
   try {
-    const module = await Module.findByIdAndUpdate(req.params.id, req.body, {
+    const updateData = { ...req.body };
+    
+    // Handle uploaded files
+    if (req.files && req.files.length > 0) {
+      const newFiles = req.files.map(file => ({
+        fileName: file.originalname,
+        fileUrl: `/api/content/files/${file.filename}`,
+        fileSize: file.size,
+        fileType: file.mimetype
+      }));
+      
+      // Get existing module to preserve existing files
+      const existingModule = await Module.findById(req.params.id);
+      if (existingModule && existingModule.files) {
+        updateData.files = [...existingModule.files, ...newFiles];
+      } else {
+        updateData.files = newFiles;
+      }
+    }
+    
+    const module = await Module.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
       runValidators: true
     });
@@ -184,6 +215,62 @@ export const deleteLesson = async (req, res) => {
       return res.status(404).json({ message: 'Lesson not found' });
     }
     res.status(200).json({ success: true, message: 'Lesson deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// FILE CONTROLLERS
+
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export const downloadFile = async (req, res) => {
+  try {
+    const uploadsDir = path.join(__dirname, '../uploads');
+    const filePath = path.join(uploadsDir, req.params.filename);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: 'File not found' });
+    }
+    
+    // Check if download is explicitly requested via query parameter
+    if (req.query.download === 'true') {
+      return res.download(filePath);
+    }
+    
+    // Otherwise, send file inline for viewing (enables PDF embedding)
+    res.sendFile(filePath);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const deleteModuleFile = async (req, res) => {
+  try {
+    const { moduleId, filename } = req.params;
+    
+    // Remove file from module document
+    const module = await Module.findById(moduleId);
+    if (!module) {
+      return res.status(404).json({ message: 'Module not found' });
+    }
+    
+    module.files = module.files.filter(f => !f.fileUrl.includes(filename));
+    await module.save();
+    
+    // Delete physical file
+    const uploadsDir = path.join(__dirname, '../uploads');
+    const filePath = path.join(uploadsDir, filename);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+    
+    res.status(200).json({ success: true, message: 'File deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

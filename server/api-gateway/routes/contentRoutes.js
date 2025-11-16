@@ -1,5 +1,5 @@
 import express from 'express';
-import { proxyRequest } from '../utils/proxyHelper.js';
+import { proxyRequest, proxyFileUpload } from '../utils/proxyHelper.js';
 
 const router = express.Router();
 const CONTENT_SERVICE = process.env.CONTENT_SERVICE_URL || 'http://localhost:1005';
@@ -22,8 +22,23 @@ router.post('/modules', (req, res) => {
 });
 router.get('/courses/:courseId/modules', (req, res) => proxyRequest(req, res, `${CONTENT_SERVICE}/api/content/courses/${req.params.courseId}/modules`));
 router.get('/modules/:id', (req, res) => proxyRequest(req, res, `${CONTENT_SERVICE}/api/content/modules/${req.params.id}`));
-router.post('/courses/:courseId/modules', (req, res) => proxyRequest(req, res, `${CONTENT_SERVICE}/api/content/courses/${req.params.courseId}/modules`));
-router.put('/modules/:id', (req, res) => proxyRequest(req, res, `${CONTENT_SERVICE}/api/content/modules/${req.params.id}`));
+
+// Use special file upload proxy for POST and PUT with files
+router.post('/courses/:courseId/modules', (req, res) => {
+  const contentType = req.headers['content-type'] || '';
+  if (contentType.includes('multipart/form-data')) {
+    return proxyFileUpload(req, res, `${CONTENT_SERVICE}/api/content/courses/${req.params.courseId}/modules`);
+  }
+  proxyRequest(req, res, `${CONTENT_SERVICE}/api/content/courses/${req.params.courseId}/modules`);
+});
+
+router.put('/modules/:id', (req, res) => {
+  const contentType = req.headers['content-type'] || '';
+  if (contentType.includes('multipart/form-data')) {
+    return proxyFileUpload(req, res, `${CONTENT_SERVICE}/api/content/modules/${req.params.id}`);
+  }
+  proxyRequest(req, res, `${CONTENT_SERVICE}/api/content/modules/${req.params.id}`);
+});
 router.delete('/modules/:id', (req, res) => proxyRequest(req, res, `${CONTENT_SERVICE}/api/content/modules/${req.params.id}`));
 
 // Lesson routes (must be before specific module routes to avoid conflicts)
@@ -45,5 +60,9 @@ router.delete('/lessons/:id', (req, res) => proxyRequest(req, res, `${CONTENT_SE
 router.get('/lessons/:lessonId/materials', (req, res) => proxyRequest(req, res, `${CONTENT_SERVICE}/api/content/lessons/${req.params.lessonId}/materials`));
 router.post('/lessons/:lessonId/materials', (req, res) => proxyRequest(req, res, `${CONTENT_SERVICE}/api/content/lessons/${req.params.lessonId}/materials`));
 router.delete('/materials/:id', (req, res) => proxyRequest(req, res, `${CONTENT_SERVICE}/api/content/materials/${req.params.id}`));
+
+// File routes
+router.get('/files/:filename', (req, res) => proxyRequest(req, res, `${CONTENT_SERVICE}/api/content/files/${req.params.filename}`));
+router.delete('/modules/:moduleId/files/:filename', (req, res) => proxyRequest(req, res, `${CONTENT_SERVICE}/api/content/modules/${req.params.moduleId}/files/${req.params.filename}`));
 
 export default router;

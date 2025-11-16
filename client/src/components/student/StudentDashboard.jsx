@@ -41,6 +41,10 @@ export default function StudentDashboard() {
   const [courseModules, setCourseModules] = useState([]);
   const [selectedModule, setSelectedModule] = useState(null);
   const [moduleLessons, setModuleLessons] = useState([]);
+  
+  // File viewer state
+  const [viewingFile, setViewingFile] = useState(null);
+  const [showFileViewer, setShowFileViewer] = useState(false);
 
   // Activity submission form
   const [showSubmissionForm, setShowSubmissionForm] = useState(false);
@@ -530,21 +534,94 @@ export default function StudentDashboard() {
                           Module {module.order}: {module.title}
                         </h4>
                         <p className="muted small">{module.description}</p>
+                        {module.files && module.files.length > 0 && (
+                          <p className="small" style={{ marginTop: '8px', color: '#2e7d32', fontWeight: 'bold' }}>
+                            📎 {module.files.length} file(s) available
+                          </p>
+                        )}
                       </div>
-                      <button 
-                        className="btn small"
-                        onClick={() => {
-                          setSelectedModule(module);
-                          fetchModuleLessons(module._id);
-                        }}
-                      >
-                        View Lessons
-                      </button>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        {/* {module.files && module.files.length > 0 && (
+                          <button 
+                            className="btn small"
+                            style={{ background: '#2e7d32', color: 'white' }}
+                            onClick={() => {
+                              setSelectedModule(module);
+                              setSelectedModule(prev => prev?._id === module._id ? null : module);
+                            }}
+                          >
+                            📎 View Materials
+                          </button>
+                        )} */}
+                        <button 
+                          className="btn small"
+                          onClick={() => {
+                            setSelectedModule(module);
+                            fetchModuleLessons(module._id);
+                          }}
+                        >
+                          📚 View Lessons
+                        </button>
+                      </div>
                     </div>
+                    
+                    {/* Materials Section */}
+                    {selectedModule?._id === module._id && module.files && module.files.length > 0 && (
+                      <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #ddd' }}>
+                        <h5 style={{ margin: '0 0 12px 0', color: '#2e7d32' }}>📎 Course Materials</h5>
+                        <div style={{ display: 'grid', gap: '8px' }}>
+                          {module.files.map((file, idx) => {
+                            const isPDF = file.fileType === 'application/pdf' || file.fileName.toLowerCase().endsWith('.pdf');
+                            const fileUrl = `http://localhost:1001/api/content${file.fileUrl}`;
+                            
+                            return (
+                              <div key={idx} style={{ 
+                                padding: '12px', 
+                                background: '#e8f5e9', 
+                                border: '1px solid #c8e6c9',
+                                borderRadius: '8px',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                              }}>
+                                <div style={{ flex: 1 }}>
+                                  <p style={{ margin: '0 0 4px 0', fontWeight: '500' }}>
+                                    📄 {file.fileName}
+                                  </p>
+                                  <p className="muted small" style={{ margin: 0 }}>
+                                    Size: {(file.fileSize / 1024 / 1024).toFixed(2)} MB
+                                    {isPDF && ' • PDF Document'}
+                                  </p>
+                                </div>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                  <button
+                                    className="btn small"
+                                    style={{ background: '#2e7d32', color: 'white' }}
+                                    onClick={() => {
+                                      setViewingFile({ ...file, url: fileUrl });
+                                      setShowFileViewer(true);
+                                    }}
+                                  >
+                                    👁️ View
+                                  </button>
+                                  <a
+                                    href={`${fileUrl}?download=true`}
+                                    className="btn ghost small"
+                                    style={{ textDecoration: 'none' }}
+                                  >
+                                    ⬇️ Download
+                                  </a>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                     
                     {selectedModule?._id === module._id && moduleLessons.length > 0 && (
                       <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #ddd' }}>
-                        <h5 style={{ margin: '0 0 12px 0' }}>Lessons:</h5>
+                        <h5 style={{ margin: '0 0 12px 0' }}>📚 Lessons:</h5>
                         <div style={{ display: 'grid', gap: '8px' }}>
                           {moduleLessons.map((lesson) => (
                             <div key={lesson._id} style={{ 
@@ -1655,6 +1732,112 @@ export default function StudentDashboard() {
         {page === "payment" && renderPayment()}
         {page === "profile" && renderProfile()}
       </main>
+      
+      {/* File Viewer Modal */}
+      {showFileViewer && viewingFile && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '20px'
+          }}
+          onClick={() => {
+            setShowFileViewer(false);
+            setViewingFile(null);
+          }}
+        >
+          <div 
+            style={{
+              background: 'white',
+              borderRadius: '8px',
+              width: '90%',
+              maxWidth: '1200px',
+              height: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{
+              padding: '16px 24px',
+              borderBottom: '1px solid #ddd',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: '#f5f5f5'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px' }}>📄 {viewingFile.fileName}</h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666' }}>
+                  {(viewingFile.fileSize / 1024 / 1024).toFixed(2)} MB
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <a
+                  href={`${viewingFile.url}?download=true`}
+                  className="btn small"
+                  style={{ textDecoration: 'none' }}
+                >
+                  ⬇️ Download
+                </a>
+                <button
+                  className="btn ghost small"
+                  onClick={() => {
+                    setShowFileViewer(false);
+                    setViewingFile(null);
+                  }}
+                >
+                  ✕ Close
+                </button>
+              </div>
+            </div>
+            
+            {/* Content */}
+            <div style={{ flex: 1, overflow: 'auto', background: '#f9f9f9' }}>
+              {viewingFile.fileType === 'application/pdf' || viewingFile.fileName.toLowerCase().endsWith('.pdf') ? (
+                <iframe
+                  src={viewingFile.url}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    border: 'none'
+                  }}
+                  title={viewingFile.fileName}
+                />
+              ) : (
+                <div style={{
+                  padding: '40px',
+                  textAlign: 'center',
+                  color: '#666'
+                }}>
+                  <p style={{ fontSize: '48px', margin: '0 0 16px 0' }}>📄</p>
+                  <h3 style={{ margin: '0 0 8px 0' }}>{viewingFile.fileName}</h3>
+                  <p style={{ margin: '0 0 24px 0' }}>
+                    This file type cannot be previewed. Click download to view it.
+                  </p>
+                  <a
+                    href={`${viewingFile.url}?download=true`}
+                    className="btn"
+                    style={{ textDecoration: 'none' }}
+                  >
+                    ⬇️ Download File
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

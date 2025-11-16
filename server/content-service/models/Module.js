@@ -20,7 +20,17 @@ const moduleSchema = new mongoose.Schema({
   isPublished: {
     type: Boolean,
     default: false
-  }
+  },
+  files: [{
+    fileName: String,
+    fileUrl: String,
+    fileSize: Number,
+    fileType: String,
+    uploadedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }]
 }, {
   timestamps: true
 });

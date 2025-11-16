@@ -20,7 +20,7 @@ export default function InstructorDashboard() {
 
   const [page, setPage] = useState(getCurrentPage());
   const [currentUser, setCurrentUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
   // Dashboard data
@@ -49,6 +49,12 @@ export default function InstructorDashboard() {
   const [moduleTitle, setModuleTitle] = useState("");
   const [moduleDescription, setModuleDescription] = useState("");
   const [moduleOrder, setModuleOrder] = useState("");
+  const [moduleFiles, setModuleFiles] = useState([]);
+  
+  // File viewer state for instructor
+  const [viewingFile, setViewingFile] = useState(null);
+  const [showFileViewer, setShowFileViewer] = useState(false);
+  const [viewingModule, setViewingModule] = useState(null);
   
   // Lesson form fields
   const [lessonTitle, setLessonTitle] = useState("");
@@ -87,9 +93,12 @@ export default function InstructorDashboard() {
   }, [location.pathname]);
 
   useEffect(() => {
-    if (currentUser && page === "dashboard") {
+    if (currentUser) {
       fetchDashboardData();
     }
+  }, [currentUser]);
+
+  useEffect(() => {
     if (currentUser && page === "profile") {
       fetchInstructorProfile();
     }
@@ -761,6 +770,7 @@ export default function InstructorDashboard() {
     setModuleTitle("");
     setModuleDescription("");
     setModuleOrder("");
+    setModuleFiles([]);
     setEditingModule(null);
     setShowModuleForm(false);
   };
@@ -804,7 +814,8 @@ export default function InstructorDashboard() {
         courseId: selectedCourse._id,
         title: moduleTitle.trim(),
         description: moduleDescription.trim(),
-        order: parseInt(moduleOrder) || modules.length + 1
+        order: parseInt(moduleOrder) || modules.length + 1,
+        files: moduleFiles
       });
       
       alert('✅ Module created successfully!');
@@ -826,7 +837,8 @@ export default function InstructorDashboard() {
       await api.updateModule(editingModule._id, {
         title: moduleTitle.trim(),
         description: moduleDescription.trim(),
-        order: parseInt(moduleOrder)
+        order: parseInt(moduleOrder),
+        files: moduleFiles
       });
       
       alert('✅ Module updated successfully!');
@@ -973,7 +985,9 @@ export default function InstructorDashboard() {
           <h2>Learning Materials</h2>
           <p className="muted small">Select a course to manage its modules and lessons</p>
           
-          {instructorCourses.length === 0 ? (
+          {loading ? (
+            <p className="muted small" style={{ marginTop: '16px' }}>Loading courses...</p>
+          ) : instructorCourses.length === 0 ? (
             <p className="muted small" style={{ marginTop: '16px' }}>No courses assigned to you.</p>
           ) : (
             <div style={{ display: 'grid', gap: '12px', marginTop: '16px' }}>
@@ -1071,6 +1085,73 @@ export default function InstructorDashboard() {
                   />
                 </div>
 
+                <div>
+                  <label className="small" style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+                    📎 Attach Files (Optional)
+                  </label>
+                  <input
+                    type="file"
+                    multiple
+                    onChange={(e) => setModuleFiles(e.target.files)}
+                    accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.gif,.mp4,.mov,.zip,.rar"
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      padding: '8px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      fontSize: '14px'
+                    }}
+                  />
+                  <p className="small" style={{ color: '#666', marginTop: '4px', fontSize: '12px' }}>
+                    Accepted: PDF, Word, PowerPoint, Excel, Images, Videos, ZIP (Max 100MB per file)
+                  </p>
+                  {moduleFiles && moduleFiles.length > 0 && (
+                    <div style={{ marginTop: '8px' }}>
+                      <p className="small" style={{ fontWeight: 'bold' }}>Selected Files:</p>
+                      <ul style={{ marginTop: '4px', paddingLeft: '20px' }}>
+                        {Array.from(moduleFiles).map((file, idx) => (
+                          <li key={idx} className="small">
+                            {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {editingModule && editingModule.files && editingModule.files.length > 0 && (
+                    <div style={{ marginTop: '8px' }}>
+                      <p className="small" style={{ fontWeight: 'bold' }}>Current Files:</p>
+                      <ul style={{ marginTop: '4px', paddingLeft: '20px' }}>
+                        {editingModule.files.map((file, idx) => (
+                          <li key={idx} className="small" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                            <a href={`http://localhost:1001/api/content${file.fileUrl}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)' }}>
+                              📄 {file.fileName}
+                            </a>
+                            <button
+                              className="btn ghost small"
+                              style={{ padding: '2px 6px', fontSize: '11px', color: 'var(--danger)' }}
+                              onClick={async () => {
+                                if (confirm(`Delete ${file.fileName}?`)) {
+                                  try {
+                                    const filename = file.fileUrl.split('/').pop();
+                                    await api.deleteModuleFile(editingModule._id, filename);
+                                    alert('File deleted!');
+                                    await fetchModules(selectedCourse._id);
+                                  } catch (err) {
+                                    alert('Failed to delete file: ' + err.message);
+                                  }
+                                }
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
                 <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                   <button 
                     className="btn small" 
@@ -1117,8 +1198,25 @@ export default function InstructorDashboard() {
                         {module.description && (
                           <p className="small">{module.description}</p>
                         )}
+                        {module.files && module.files.length > 0 && (
+                          <p className="small" style={{ marginTop: '8px', color: '#2e7d32', fontWeight: 'bold' }}>
+                            📎 {module.files.length} file(s) attached
+                          </p>
+                        )}
                       </div>
                       <div style={{ display: 'flex', gap: '8px' }}>
+                        {module.files && module.files.length > 0 && (
+                          <button 
+                            className="btn small"
+                            style={{ background: '#2e7d32', color: 'white' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setViewingModule(viewingModule?._id === module._id ? null : module);
+                            }}
+                          >
+                            📎 View
+                          </button>
+                        )}
                         <button 
                           className="btn ghost small"
                           onClick={(e) => {
@@ -1140,6 +1238,80 @@ export default function InstructorDashboard() {
                         </button>
                       </div>
                     </div>
+                    
+                    {/* Materials Section for Instructor */}
+                    {viewingModule?._id === module._id && module.files && module.files.length > 0 && (
+                      <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #ddd' }}>
+                        <h5 style={{ margin: '0 0 12px 0', color: '#2e7d32' }}>📎 Module Materials</h5>
+                        <div style={{ display: 'grid', gap: '8px' }}>
+                          {module.files.map((file, idx) => {
+                            const isPDF = file.fileType === 'application/pdf' || file.fileName.toLowerCase().endsWith('.pdf');
+                            const fileUrl = `http://localhost:1001/api/content${file.fileUrl}`;
+                            
+                            return (
+                              <div key={idx} style={{ 
+                                padding: '12px', 
+                                background: '#e8f5e9', 
+                                border: '1px solid #c8e6c9',
+                                borderRadius: '8px',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                              }}>
+                                <div style={{ flex: 1 }}>
+                                  <p style={{ margin: '0 0 4px 0', fontWeight: '500' }}>
+                                    📄 {file.fileName}
+                                  </p>
+                                  <p className="small" style={{ margin: 0, color: '#666' }}>
+                                    Size: {(file.fileSize / 1024 / 1024).toFixed(2)} MB
+                                    {isPDF && ' • PDF Document'}
+                                  </p>
+                                </div>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                  <button
+                                    className="btn small"
+                                    style={{ background: '#2e7d32', color: 'white' }}
+                                    onClick={() => {
+                                      setViewingFile({ ...file, url: fileUrl });
+                                      setShowFileViewer(true);
+                                    }}
+                                  >
+                                    👁️ View
+                                  </button>
+                                  <a
+                                    href={fileUrl}
+                                    download
+                                    className="btn ghost small"
+                                    style={{ textDecoration: 'none' }}
+                                  >
+                                    ⬇️ Download
+                                  </a>
+                                  <button
+                                    className="btn ghost small"
+                                    style={{ color: 'var(--danger)' }}
+                                    onClick={async () => {
+                                      if (confirm(`Delete ${file.fileName}?`)) {
+                                        try {
+                                          const filename = file.fileUrl.split('/').pop();
+                                          await api.deleteModuleFile(module._id, filename);
+                                          alert('File deleted!');
+                                          await fetchModules(selectedCourse._id);
+                                          setViewingModule(null);
+                                        } catch (err) {
+                                          alert('Failed to delete file: ' + err.message);
+                                        }
+                                      }
+                                    }}
+                                  >
+                                    🗑️ Delete
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1601,7 +1773,9 @@ export default function InstructorDashboard() {
               </button>
             )}
           </div>
-          {instructorCourses.length === 0 ? (
+          {loading ? (
+            <p className="muted small">Loading courses...</p>
+          ) : instructorCourses.length === 0 ? (
             <p className="muted small">No courses assigned to you.</p>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '8px' }}>
@@ -2412,23 +2586,26 @@ export default function InstructorDashboard() {
         {/* Course Selection */}
         <div className="card" style={{ marginBottom: '16px' }}>
           <h3>Select Course & Section</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '12px' }}>
-            <div>
-              <label className="small" style={{ display: 'block', marginBottom: '4px' }}>Course</label>
-              <select
-                value={selectedAttendanceCourse?._id || ''}
-                onChange={(e) => {
-                  const course = instructorCourses.find(c => c._id === e.target.value);
-                  setSelectedAttendanceCourse(course);
-                  setSelectedSection(null);
-                  setSectionStudents([]);
-                  setAttendanceRecords([]);
-                  if (course) fetchCourseSections(course._id);
-                }}
-                style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
-              >
-                <option value="">-- Select Course --</option>
-                {instructorCourses.map(course => (
+          {loading ? (
+            <p className="muted small" style={{ marginTop: '12px' }}>Loading courses...</p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '12px' }}>
+              <div>
+                <label className="small" style={{ display: 'block', marginBottom: '4px' }}>Course</label>
+                <select
+                  value={selectedAttendanceCourse?._id || ''}
+                  onChange={(e) => {
+                    const course = instructorCourses.find(c => c._id === e.target.value);
+                    setSelectedAttendanceCourse(course);
+                    setSelectedSection(null);
+                    setSectionStudents([]);
+                    setAttendanceRecords([]);
+                    if (course) fetchCourseSections(course._id);
+                  }}
+                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+                >
+                  <option value="">-- Select Course --</option>
+                  {instructorCourses.map(course => (
                   <option key={course._id} value={course._id}>
                     {course.courseCode} - {course.title}
                   </option>
@@ -2462,6 +2639,7 @@ export default function InstructorDashboard() {
               </select>
             </div>
           </div>
+          )}
 
           {selectedSection && (
             <div style={{ marginTop: '16px', padding: '12px', background: '#f0f9ff', borderRadius: '8px' }}>
@@ -2674,38 +2852,42 @@ export default function InstructorDashboard() {
           <p className="muted small">Overview of your teaching performance</p>
         </div>
 
-        {/* Summary Statistics */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-          <div className="card small" style={{ background: '#f0f9ff', border: '1px solid #0ea5e9' }}>
-            <h3 style={{ margin: 0, fontSize: '2rem', color: '#0284c7' }}>{dashboardStats.myCourses}</h3>
-            <p className="muted small" style={{ margin: '4px 0 0' }}>Courses Teaching</p>
-          </div>
-          <div className="card small" style={{ background: '#f0fdf4', border: '1px solid #22c55e' }}>
-            <h3 style={{ margin: 0, fontSize: '2rem', color: '#16a34a' }}>{dashboardStats.mySections}</h3>
-            <p className="muted small" style={{ margin: '4px 0 0' }}>Sections Assigned</p>
-          </div>
-          <div className="card small" style={{ background: '#fefce8', border: '1px solid #eab308' }}>
-            <h3 style={{ margin: 0, fontSize: '2rem', color: '#ca8a04' }}>{dashboardStats.totalModules}</h3>
-            <p className="muted small" style={{ margin: '4px 0 0' }}>Total Modules</p>
-          </div>
-          <div className="card small" style={{ background: '#fdf4ff', border: '1px solid #a855f7' }}>
-            <h3 style={{ margin: 0, fontSize: '2rem', color: '#9333ea' }}>{dashboardStats.totalLessons}</h3>
-            <p className="muted small" style={{ margin: '4px 0 0' }}>Total Lessons</p>
-          </div>
-        </div>
+        {loading ? (
+          <p className="muted small" style={{ marginTop: '16px' }}>Loading reports data...</p>
+        ) : (
+          <>
+            {/* Summary Statistics */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+              <div className="card small" style={{ background: '#f0f9ff', border: '1px solid #0ea5e9' }}>
+                <h3 style={{ margin: 0, fontSize: '2rem', color: '#0284c7' }}>{dashboardStats.myCourses}</h3>
+                <p className="muted small" style={{ margin: '4px 0 0' }}>Courses Teaching</p>
+              </div>
+              <div className="card small" style={{ background: '#f0fdf4', border: '1px solid #22c55e' }}>
+                <h3 style={{ margin: 0, fontSize: '2rem', color: '#16a34a' }}>{dashboardStats.mySections}</h3>
+                <p className="muted small" style={{ margin: '4px 0 0' }}>Sections Assigned</p>
+              </div>
+              <div className="card small" style={{ background: '#fefce8', border: '1px solid #eab308' }}>
+                <h3 style={{ margin: 0, fontSize: '2rem', color: '#ca8a04' }}>{dashboardStats.totalModules}</h3>
+                <p className="muted small" style={{ margin: '4px 0 0' }}>Total Modules</p>
+              </div>
+              <div className="card small" style={{ background: '#fdf4ff', border: '1px solid #a855f7' }}>
+                <h3 style={{ margin: 0, fontSize: '2rem', color: '#9333ea' }}>{dashboardStats.totalLessons}</h3>
+                <p className="muted small" style={{ margin: '4px 0 0' }}>Total Lessons</p>
+              </div>
+            </div>
 
-        {/* Course Overview */}
-        <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3>Course Overview</h3>
-            <button className="btn ghost small" onClick={fetchInstructorReports}>
-              🔄 Refresh
-            </button>
-          </div>
+            {/* Course Overview */}
+            <div className="card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3>Course Overview</h3>
+                <button className="btn ghost small" onClick={fetchInstructorReports}>
+                  🔄 Refresh
+                </button>
+              </div>
 
-          {instructorCourses.length === 0 ? (
-            <p className="muted small">No course data available.</p>
-          ) : (
+              {instructorCourses.length === 0 ? (
+                <p className="muted small">No course data available.</p>
+              ) : (
             <table>
               <thead>
                 <tr>
@@ -2744,6 +2926,8 @@ export default function InstructorDashboard() {
             </table>
           )}
         </div>
+          </>
+        )}
       </div>
     );
   };
@@ -2880,6 +3064,122 @@ export default function InstructorDashboard() {
           {page === "reports" && renderReports()}
         </div>
       </main>
+      
+      {/* File Viewer Modal */}
+      {showFileViewer && viewingFile && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '20px'
+          }}
+          onClick={() => {
+            setShowFileViewer(false);
+            setViewingFile(null);
+          }}
+        >
+          <div 
+            style={{
+              background: 'white',
+              borderRadius: '8px',
+              width: '90%',
+              maxWidth: '1200px',
+              height: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{
+              padding: '16px 24px',
+              borderBottom: '1px solid #ddd',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: '#f5f5f5'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px' }}>📄 {viewingFile.fileName}</h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666' }}>
+                  {(viewingFile.fileSize / 1024 / 1024).toFixed(2)} MB
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <a
+                  href={viewingFile.url}
+                  download
+                  className="btn small"
+                  style={{ textDecoration: 'none' }}
+                >
+                  ⬇️ Download
+                </a>
+                <button
+                  className="btn ghost small"
+                  onClick={() => {
+                    setShowFileViewer(false);
+                    setViewingFile(null);
+                  }}
+                >
+                  ✕ Close
+                </button>
+              </div>
+            </div>
+            
+            {/* Content */}
+            <div style={{ flex: 1, overflow: 'auto', background: '#f9f9f9' }}>
+              {viewingFile.fileType === 'application/pdf' || viewingFile.fileName.toLowerCase().endsWith('.pdf') ? (
+                <iframe
+                  src={viewingFile.url}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    border: 'none'
+                  }}
+                  title={viewingFile.fileName}
+                />
+              ) : viewingFile.fileType?.startsWith('image/') ? (
+                <div style={{ padding: '20px', textAlign: 'center' }}>
+                  <img 
+                    src={viewingFile.url} 
+                    alt={viewingFile.fileName}
+                    style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain' }}
+                  />
+                </div>
+              ) : (
+                <div style={{
+                  padding: '40px',
+                  textAlign: 'center',
+                  color: '#666'
+                }}>
+                  <p style={{ fontSize: '48px', margin: '0 0 16px 0' }}>📄</p>
+                  <h3 style={{ margin: '0 0 8px 0' }}>{viewingFile.fileName}</h3>
+                  <p style={{ margin: '0 0 24px 0' }}>
+                    This file type cannot be previewed. Click download to view it.
+                  </p>
+                  <a
+                    href={viewingFile.url}
+                    download
+                    className="btn"
+                    style={{ textDecoration: 'none' }}
+                  >
+                    ⬇️ Download File
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

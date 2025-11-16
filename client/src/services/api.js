@@ -314,15 +314,106 @@ class APIService {
   }
 
   async createModule(data) {
-    return this.post('/content/modules', data);
+    const hasFiles = data.files && data.files.length > 0;
+    
+    // Always use FormData and direct route to avoid gateway body parsing issues
+    const formData = new FormData();
+    formData.append('title', data.title);
+    formData.append('description', data.description || '');
+    formData.append('order', data.order);
+    
+    // Append files if present
+    if (hasFiles) {
+      Array.from(data.files).forEach(file => {
+        formData.append('files', file);
+      });
+    }
+    
+    // Use request method directly with FormData (don't set Content-Type, browser will auto-set with boundary)
+    const url = `${this.baseURL}/content/courses/${data.courseId}/modules`;
+    const config = {
+      method: 'POST',
+      headers: {
+        'Authorization': this.token ? `Bearer ${this.token}` : '',
+        // Don't set Content-Type for FormData, browser will set it with boundary
+      },
+      body: formData,
+    };
+
+    try {
+      const response = await fetch(url, config);
+      
+      if (!response.ok) {
+        let errorMessage = 'Request failed';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('API Error:', error);
+      throw error;
+    }
   }
 
   async updateModule(id, data) {
+    // If data contains files, use FormData
+    if (data.files && data.files.length > 0) {
+      const formData = new FormData();
+      if (data.title) formData.append('title', data.title);
+      if (data.description) formData.append('description', data.description);
+      if (data.order) formData.append('order', data.order);
+      
+      // Append files
+      Array.from(data.files).forEach(file => {
+        formData.append('files', file);
+      });
+      
+      // Use request method directly with FormData
+      const url = `${this.baseURL}/content/modules/${id}`;
+      const config = {
+        method: 'PUT',
+        headers: {
+          'Authorization': this.token ? `Bearer ${this.token}` : '',
+          // Don't set Content-Type for FormData, browser will set it with boundary
+        },
+        body: formData,
+      };
+
+      try {
+        const response = await fetch(url, config);
+        
+        if (!response.ok) {
+          let errorMessage = 'Request failed';
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch (e) {
+            errorMessage = response.statusText || errorMessage;
+          }
+          throw new Error(errorMessage);
+        }
+
+        return await response.json();
+      } catch (error) {
+        console.error('API Error:', error);
+        throw error;
+      }
+    }
     return this.put(`/content/modules/${id}`, data);
   }
 
   async deleteModule(id) {
     return this.delete(`/content/modules/${id}`);
+  }
+  
+  async deleteModuleFile(moduleId, filename) {
+    return this.delete(`/content/modules/${moduleId}/files/${filename}`);
   }
 
   // Lessons

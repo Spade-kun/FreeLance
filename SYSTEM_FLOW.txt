@@ -1,0 +1,867 @@
+================================================================================
+                    MERN FREELANCE SYSTEM FLOW DOCUMENTATION
+                         System Architecture & Flow
+================================================================================
+
+TABLE OF CONTENTS
+-----------------
+1. System Overview
+2. Client Architecture & Flow
+3. Server Microservices Architecture
+4. API Gateway & Routing
+5. Authentication Flow
+6. User Flows by Role
+7. Key Features & Their Flow
+8. Database & Data Flow
+9. External Integrations
+10. Error Handling & Security
+
+================================================================================
+1. SYSTEM OVERVIEW
+================================================================================
+
+The MERN Freelance system is a microservices-based Learning Management System 
+(LMS) built with:
+
+FRONTEND:  React.js + Vite + Tailwind CSS
+BACKEND:   Node.js + Express (Microservices Architecture)
+DATABASE:  MongoDB
+GATEWAY:   API Gateway for centralized routing
+
+ARCHITECTURE PATTERN:
+- Client → API Gateway → Microservices → MongoDB
+- JWT-based Authentication
+- Role-based Access Control (Student, Instructor, Admin)
+- RESTful API Design
+
+================================================================================
+2. CLIENT ARCHITECTURE & FLOW
+================================================================================
+
+CLIENT STRUCTURE:
+-----------------
+client/
+├── src/
+│   ├── components/        # Reusable UI components
+│   ├── pages/            # Route-based pages
+│   ├── services/         # API communication layer
+│   ├── context/          # Global state management
+│   ├── utils/            # Helper functions
+│   └── App.jsx           # Main application entry
+
+CLIENT FLOW:
+-----------
+
+Step 1: USER LANDS ON APPLICATION
+   ↓
+   - App.jsx loads
+   - AuthContext checks for existing token in localStorage
+   - Protected routes are configured
+
+Step 2: AUTHENTICATION CHECK
+   ↓
+   IF token exists:
+      → Validate token with backend
+      → Load user data and role
+      → Redirect to appropriate dashboard
+   ELSE:
+      → Show login/signup page
+
+Step 3: USER INTERACTION
+   ↓
+   - User interacts with UI components
+   - Components call service functions (e.g., authService, courseService)
+   - Services send HTTP requests to API Gateway
+
+Step 4: API COMMUNICATION
+   ↓
+   - axios instance with base URL: http://localhost:5000/api
+   - Headers include JWT token for authentication
+   - Request → API Gateway → Microservice → Response
+
+Step 5: STATE MANAGEMENT
+   ↓
+   - Response data updates component state
+   - Context providers update global state
+   - UI re-renders with new data
+
+Step 6: ERROR HANDLING
+   ↓
+   - Errors caught in service layer
+   - Toast notifications display user-friendly messages
+   - Errors logged for debugging
+
+================================================================================
+3. SERVER MICROSERVICES ARCHITECTURE
+================================================================================
+
+MICROSERVICES BREAKDOWN:
+-----------------------
+
+1. API GATEWAY (Port: 5000)
+   - Entry point for all client requests
+   - Routes requests to appropriate microservices
+   - Handles CORS, rate limiting, and logging
+
+2. AUTH SERVICE (Port: 5001)
+   - User authentication and authorization
+   - JWT token generation and validation
+   - Google OAuth integration
+   - Password encryption and reset
+
+3. USER SERVICE (Port: 5002)
+   - User profile management
+   - Role-based access control
+   - User data CRUD operations
+   - Profile updates and queries
+
+4. COURSE SERVICE (Port: 5003)
+   - Course creation and management
+   - Module and lesson organization
+   - Course enrollment
+   - Progress tracking
+
+5. CONTENT SERVICE (Port: 5004)
+   - File uploads and management
+   - Google Drive integration
+   - Video and document handling
+   - Content delivery
+
+6. ASSESSMENT SERVICE (Port: 5005)
+   - Quiz and exam creation
+   - Assignment management
+   - Submission handling
+   - Grading system
+
+7. REPORT SERVICE (Port: 5006)
+   - Analytics and reporting
+   - Progress reports
+   - Performance metrics
+   - Data aggregation
+
+8. EMAIL SERVICE (Port: 5007)
+   - Email notifications
+   - Welcome emails
+   - Password reset emails
+   - Course notifications
+
+MICROSERVICES COMMUNICATION:
+---------------------------
+- Each service is independent and self-contained
+- Services communicate through API Gateway
+- Each service has its own MongoDB database/collection
+- Services are stateless for scalability
+
+================================================================================
+4. API GATEWAY & ROUTING
+================================================================================
+
+API GATEWAY FLOW:
+----------------
+
+1. REQUEST ARRIVES
+   ↓
+   Client Request → API Gateway (http://localhost:5000/api/...)
+
+2. MIDDLEWARE PIPELINE
+   ↓
+   → CORS validation
+   → Rate limiting check
+   → Request logging
+   → Body parsing
+
+3. ROUTE MATCHING
+   ↓
+   /api/auth/*        → Auth Service (5001)
+   /api/users/*       → User Service (5002)
+   /api/courses/*     → Course Service (5003)
+   /api/content/*     → Content Service (5004)
+   /api/assessments/* → Assessment Service (5005)
+   /api/reports/*     → Report Service (5006)
+   /api/email/*       → Email Service (5007)
+
+4. AUTHENTICATION CHECK
+   ↓
+   IF route requires auth:
+      → Extract JWT from Authorization header
+      → Validate token
+      → Attach user data to request
+   ELSE:
+      → Allow public access
+
+5. FORWARD TO MICROSERVICE
+   ↓
+   → Gateway proxies request to microservice
+   → Microservice processes request
+   → Response sent back through gateway
+
+6. RESPONSE HANDLING
+   ↓
+   → Gateway formats response
+   → Adds necessary headers
+   → Returns to client
+
+================================================================================
+5. AUTHENTICATION FLOW
+================================================================================
+
+SIGNUP FLOW:
+-----------
+1. User fills signup form (name, email, password, role)
+   ↓
+2. Client sends POST /api/auth/signup
+   ↓
+3. Auth Service validates data
+   ↓
+4. Check if email already exists
+   ↓
+5. Hash password using bcrypt
+   ↓
+6. Create user in database
+   ↓
+7. Generate JWT token
+   ↓
+8. Send welcome email (Email Service)
+   ↓
+9. Return token + user data to client
+   ↓
+10. Client stores token in localStorage
+    ↓
+11. Redirect to dashboard
+
+LOGIN FLOW:
+----------
+1. User enters email and password
+   ↓
+2. Client sends POST /api/auth/login
+   ↓
+3. Auth Service finds user by email
+   ↓
+4. Compare password hash
+   ↓
+5. IF valid:
+      → Generate JWT token
+      → Update last login time
+      → Return token + user data
+   ELSE:
+      → Return error message
+   ↓
+6. Client stores token
+   ↓
+7. Redirect based on role:
+   - Student    → /student/dashboard
+   - Instructor → /instructor/dashboard
+   - Admin      → /admin/dashboard
+
+GOOGLE OAUTH FLOW:
+-----------------
+1. User clicks "Sign in with Google"
+   ↓
+2. Client redirects to Google OAuth consent screen
+   ↓
+3. User grants permission
+   ↓
+4. Google redirects back with authorization code
+   ↓
+5. Client sends code to POST /api/auth/google
+   ↓
+6. Auth Service exchanges code for Google tokens
+   ↓
+7. Fetch user info from Google
+   ↓
+8. Check if user exists in database
+   ↓
+9. IF exists:
+      → Update profile
+   ELSE:
+      → Create new user
+   ↓
+10. Generate JWT token
+    ↓
+11. Return token + user data
+    ↓
+12. Client stores and redirects
+
+TOKEN VALIDATION:
+----------------
+- Every protected request includes token in header
+- Format: Authorization: Bearer <token>
+- Middleware verifies token signature
+- Extracts user ID and role
+- Attaches to req.user for route handlers
+
+================================================================================
+6. USER FLOWS BY ROLE
+================================================================================
+
+STUDENT FLOW:
+------------
+1. LOGIN → Student Dashboard
+   ↓
+2. VIEW AVAILABLE COURSES
+   - GET /api/courses → List of all courses
+   - Filter by category, instructor, etc.
+   ↓
+3. ENROLL IN COURSE
+   - POST /api/courses/:id/enroll
+   - Add course to student's enrolled courses
+   ↓
+4. ACCESS COURSE CONTENT
+   - GET /api/courses/:id → Course details
+   - GET /api/content/:id → Access lessons, videos, files
+   ↓
+5. TRACK PROGRESS
+   - POST /api/courses/:id/progress → Update completion
+   - GET /api/reports/student/progress → View progress
+   ↓
+6. TAKE ASSESSMENTS
+   - GET /api/assessments/course/:id → View available quizzes
+   - POST /api/assessments/:id/submit → Submit answers
+   - GET /api/assessments/:id/results → View grades
+   ↓
+7. SUBMIT ASSIGNMENTS
+   - POST /api/assessments/assignments/:id/submit
+   - Upload file to Google Drive (Content Service)
+   ↓
+8. VIEW REPORTS
+   - GET /api/reports/student/performance
+
+INSTRUCTOR FLOW:
+---------------
+1. LOGIN → Instructor Dashboard
+   ↓
+2. CREATE COURSE
+   - POST /api/courses
+   - Input: title, description, category, price
+   ↓
+3. ADD MODULES & LESSONS
+   - POST /api/courses/:id/modules
+   - POST /api/courses/:id/modules/:moduleId/lessons
+   ↓
+4. UPLOAD CONTENT
+   - POST /api/content/upload
+   - Files stored in Google Drive
+   - Links saved in database
+   ↓
+5. CREATE ASSESSMENTS
+   - POST /api/assessments/quiz → Create quiz
+   - POST /api/assessments/assignment → Create assignment
+   - Add questions, set deadlines
+   ↓
+6. MANAGE ENROLLMENTS
+   - GET /api/courses/:id/students → View enrolled students
+   - Track student progress
+   ↓
+7. GRADE SUBMISSIONS
+   - GET /api/assessments/submissions → View all submissions
+   - POST /api/assessments/submissions/:id/grade
+   ↓
+8. VIEW ANALYTICS
+   - GET /api/reports/instructor/courses
+   - GET /api/reports/instructor/students
+   ↓
+9. MANAGE ATTENDANCE (if enabled)
+   - POST /api/courses/:id/attendance → Mark attendance
+   - GET /api/courses/:id/attendance → View records
+
+ADMIN FLOW:
+----------
+1. LOGIN → Admin Dashboard
+   ↓
+2. USER MANAGEMENT
+   - GET /api/users → List all users
+   - PUT /api/users/:id → Update user
+   - DELETE /api/users/:id → Deactivate user
+   - POST /api/users → Create user
+   ↓
+3. COURSE MANAGEMENT
+   - GET /api/courses/all → View all courses
+   - PUT /api/courses/:id/approve → Approve course
+   - DELETE /api/courses/:id → Remove course
+   ↓
+4. SYSTEM MONITORING
+   - GET /api/reports/admin/system → System stats
+   - View logs and activity
+   ↓
+5. CONTENT MODERATION
+   - Review reported content
+   - Manage uploads
+   ↓
+6. FINANCIAL MANAGEMENT
+   - GET /api/reports/admin/revenue
+   - Manage payments and refunds
+   ↓
+7. CONFIGURATION
+   - Update system settings
+   - Manage roles and permissions
+
+================================================================================
+7. KEY FEATURES & THEIR FLOW
+================================================================================
+
+COURSE ENROLLMENT FLOW:
+----------------------
+1. Student browses courses
+   GET /api/courses
+   ↓
+2. Student clicks "Enroll"
+   POST /api/courses/:courseId/enroll
+   ↓
+3. Course Service checks:
+   - Is student already enrolled?
+   - Is course full?
+   - Payment required?
+   ↓
+4. IF payment required:
+   - Redirect to PayPal
+   - Process payment
+   - Confirm enrollment
+   ELSE:
+   - Directly enroll
+   ↓
+5. Update student's enrolled courses
+   ↓
+6. Send enrollment confirmation email
+   ↓
+7. Grant access to course content
+
+FILE UPLOAD FLOW:
+----------------
+1. User selects file to upload
+   ↓
+2. Client sends POST /api/content/upload
+   - Multipart form data
+   - File + metadata
+   ↓
+3. Content Service receives file
+   ↓
+4. Validate file type and size
+   ↓
+5. Upload to Google Drive
+   - Use Google Drive API
+   - Set permissions
+   ↓
+6. Get shareable link
+   ↓
+7. Store file metadata in database:
+   - filename, size, type
+   - Google Drive file ID
+   - uploader info
+   ↓
+8. Return file URL to client
+   ↓
+9. Client displays success message
+
+QUIZ SUBMISSION FLOW:
+--------------------
+1. Student opens quiz
+   GET /api/assessments/quiz/:id
+   ↓
+2. Display questions and options
+   ↓
+3. Student answers questions
+   ↓
+4. Student clicks "Submit"
+   POST /api/assessments/quiz/:id/submit
+   Body: { answers: [{questionId, answer}] }
+   ↓
+5. Assessment Service validates submission:
+   - Check deadline
+   - Verify student enrollment
+   ↓
+6. Calculate score:
+   - Compare answers with correct answers
+   - Calculate percentage
+   ↓
+7. Save submission to database
+   ↓
+8. Update student progress
+   ↓
+9. Send result notification email
+   ↓
+10. Return results to client
+    ↓
+11. Display score and feedback
+
+PROGRESS TRACKING FLOW:
+----------------------
+1. Student completes a lesson
+   ↓
+2. Client sends POST /api/courses/:id/progress
+   Body: { lessonId, completed: true }
+   ↓
+3. Course Service updates progress:
+   - Mark lesson as completed
+   - Calculate overall completion %
+   ↓
+4. IF course completed:
+   - Generate certificate
+   - Send completion email
+   - Award badge/points
+   ↓
+5. Return updated progress
+   ↓
+6. Client updates UI (progress bar, checkmarks)
+
+NOTIFICATION FLOW:
+-----------------
+1. Event occurs (enrollment, grade, etc.)
+   ↓
+2. Service triggers email notification
+   POST to Email Service
+   ↓
+3. Email Service receives request:
+   - recipient email
+   - template type
+   - data for template
+   ↓
+4. Load email template
+   ↓
+5. Populate template with data
+   ↓
+6. Send email via SMTP/SendGrid
+   ↓
+7. Log email status
+   ↓
+8. Return confirmation
+
+================================================================================
+8. DATABASE & DATA FLOW
+================================================================================
+
+DATABASE STRUCTURE:
+------------------
+MongoDB database with collections per service:
+
+AUTH SERVICE:
+- users: { _id, email, password, role, googleId, tokens }
+
+USER SERVICE:
+- profiles: { userId, name, bio, avatar, phone, address }
+
+COURSE SERVICE:
+- courses: { _id, title, description, instructorId, modules[] }
+- enrollments: { studentId, courseId, enrolledAt, progress }
+
+CONTENT SERVICE:
+- files: { _id, filename, driveId, url, uploadedBy, courseId }
+
+ASSESSMENT SERVICE:
+- quizzes: { _id, courseId, title, questions[] }
+- assignments: { _id, courseId, title, deadline }
+- submissions: { studentId, assessmentId, answers, grade }
+
+REPORT SERVICE:
+- analytics: { userId, courseId, metrics, timestamp }
+
+DATA FLOW PATTERN:
+-----------------
+1. Client Request
+   ↓
+2. API Gateway
+   ↓
+3. Microservice
+   ↓
+4. Database Query/Update
+   ↓
+5. Process Data
+   ↓
+6. Return Response
+   ↓
+7. Update Client State
+
+DATA CONSISTENCY:
+----------------
+- Each service owns its data
+- Cross-service data fetched via API calls
+- Use MongoDB transactions for critical operations
+- Eventual consistency for non-critical updates
+
+================================================================================
+9. EXTERNAL INTEGRATIONS
+================================================================================
+
+GOOGLE OAUTH:
+------------
+Purpose: User authentication
+Flow:
+1. Client initiates OAuth flow
+2. User authenticates with Google
+3. Google returns auth code
+4. Backend exchanges for tokens
+5. Fetch user profile
+6. Create/update local user
+
+GOOGLE DRIVE:
+-------------
+Purpose: File storage
+Flow:
+1. Service uploads file
+2. Google Drive stores file
+3. Returns file ID and link
+4. Link stored in database
+5. Users access via link
+
+APIs Used:
+- drive.files.create
+- drive.permissions.create
+- drive.files.get
+
+PAYPAL (Optional):
+-----------------
+Purpose: Payment processing
+Flow:
+1. User clicks "Pay"
+2. Redirect to PayPal
+3. User completes payment
+4. PayPal redirects with status
+5. Backend verifies transaction
+6. Complete enrollment
+
+EMAIL SERVICE:
+-------------
+Provider: NodeMailer / SendGrid
+Purpose: Notifications
+Events:
+- User signup
+- Course enrollment
+- Assignment graded
+- Password reset
+- System announcements
+
+================================================================================
+10. ERROR HANDLING & SECURITY
+================================================================================
+
+ERROR HANDLING FLOW:
+-------------------
+1. Error occurs in service
+   ↓
+2. Service catches error
+   ↓
+3. Log error details
+   ↓
+4. Determine error type:
+   - Validation error (400)
+   - Authentication error (401)
+   - Authorization error (403)
+   - Not found (404)
+   - Server error (500)
+   ↓
+5. Format error response:
+   { success: false, message: "...", error: {...} }
+   ↓
+6. Send to client
+   ↓
+7. Client displays user-friendly message
+   ↓
+8. Log error on client side
+
+SECURITY MEASURES:
+-----------------
+
+1. AUTHENTICATION:
+   - JWT tokens with expiration
+   - Secure password hashing (bcrypt)
+   - Token refresh mechanism
+
+2. AUTHORIZATION:
+   - Role-based access control
+   - Route-level permissions
+   - Resource ownership validation
+
+3. DATA VALIDATION:
+   - Input sanitization
+   - Schema validation (Joi/Yup)
+   - XSS prevention
+
+4. API SECURITY:
+   - CORS configuration
+   - Rate limiting (express-rate-limit)
+   - Request size limits
+   - Helmet.js security headers
+
+5. DATABASE SECURITY:
+   - MongoDB injection prevention
+   - Parameterized queries
+   - Connection encryption
+
+6. FILE UPLOAD SECURITY:
+   - File type validation
+   - Size limits
+   - Virus scanning (optional)
+   - Secure storage (Google Drive)
+
+7. ENVIRONMENT SECURITY:
+   - Environment variables for secrets
+   - .env files not committed
+   - Separate dev/prod configs
+
+RATE LIMITING:
+-------------
+- 100 requests per 15 minutes per IP
+- Prevents brute force attacks
+- Protects against DDoS
+
+================================================================================
+COMPLETE USER JOURNEY EXAMPLE
+================================================================================
+
+SCENARIO: New Student Enrolls and Completes a Course
+-----------------------------------------------------
+
+1. STUDENT VISITS WEBSITE
+   → Loads React app
+   → No token found
+   → Redirected to login page
+
+2. STUDENT SIGNS UP
+   → Fills signup form (email, password, role: student)
+   → POST /api/auth/signup
+   → Auth Service creates user
+   → Password hashed and stored
+   → JWT token generated
+   → Welcome email sent
+   → Token stored in localStorage
+   → Redirected to /student/dashboard
+
+3. STUDENT BROWSES COURSES
+   → GET /api/courses
+   → Course Service returns available courses
+   → Student sees list with filters
+
+4. STUDENT ENROLLS IN COURSE
+   → Clicks "Enroll" on "Web Development 101"
+   → POST /api/courses/WD101/enroll
+   → Course Service validates enrollment
+   → Adds to student's enrollments
+   → Enrollment email sent
+   → Redirected to course page
+
+5. STUDENT ACCESSES CONTENT
+   → GET /api/courses/WD101
+   → Sees modules and lessons
+   → Clicks first lesson
+   → GET /api/content/lesson-1
+   → Video and materials loaded from Google Drive
+   → Student watches video
+
+6. STUDENT MARKS LESSON COMPLETE
+   → Clicks "Mark Complete"
+   → POST /api/courses/WD101/progress
+   → Progress updated: 1/20 lessons complete
+   → Progress bar updates
+
+7. STUDENT TAKES QUIZ
+   → Completes all lessons in module 1
+   → Opens quiz
+   → GET /api/assessments/quiz/Q1
+   → Answers 10 questions
+   → POST /api/assessments/quiz/Q1/submit
+   → Assessment Service grades quiz
+   → Score: 8/10 (80%)
+   → Results displayed
+   → Grade email sent
+
+8. STUDENT SUBMITS ASSIGNMENT
+   → Opens assignment for module 2
+   → Uploads project file
+   → POST /api/content/upload
+   → File uploaded to Google Drive
+   → POST /api/assessments/assignment/A1/submit
+   → Submission recorded
+   → Instructor notified
+
+9. INSTRUCTOR GRADES ASSIGNMENT
+   → Instructor views submissions
+   → GET /api/assessments/submissions
+   → Reviews student's work
+   → POST /api/assessments/submissions/S123/grade
+   → Grade: 95/100
+   → Student receives grade notification
+
+10. STUDENT COMPLETES COURSE
+    → Finishes all modules and assessments
+    → POST /api/courses/WD101/progress (final update)
+    → Course marked 100% complete
+    → Certificate generated
+    → Completion email with certificate
+    → Badge awarded
+
+11. STUDENT VIEWS REPORTS
+    → GET /api/reports/student/progress
+    → Sees all completed courses
+    → Performance metrics displayed
+    → Certificates available for download
+
+================================================================================
+DEVELOPMENT & DEPLOYMENT
+================================================================================
+
+LOCAL DEVELOPMENT:
+-----------------
+1. Start MongoDB
+2. Start all microservices (ports 5001-5007)
+3. Start API Gateway (port 5000)
+4. Start React client (port 5173)
+5. Services communicate via localhost
+
+PRODUCTION DEPLOYMENT:
+---------------------
+1. Build React app: npm run build
+2. Deploy microservices to cloud (AWS, Azure, DigitalOcean)
+3. Use environment variables for configs
+4. Setup MongoDB Atlas for database
+5. Configure domain and SSL
+6. Setup load balancer for gateway
+7. Enable monitoring and logging
+
+SCALING STRATEGY:
+----------------
+- Horizontal scaling: Multiple instances per service
+- Load balancing across instances
+- Database replication and sharding
+- Caching layer (Redis) for frequent queries
+- CDN for static content
+
+================================================================================
+TROUBLESHOOTING COMMON ISSUES
+================================================================================
+
+1. AUTHENTICATION FAILS
+   - Check token expiration
+   - Verify JWT secret matches
+   - Ensure headers are sent correctly
+
+2. CORS ERRORS
+   - Verify CORS settings in API Gateway
+   - Check origin in .env matches client URL
+
+3. FILE UPLOAD FAILS
+   - Verify Google Drive credentials
+   - Check file size limits
+   - Ensure multer middleware configured
+
+4. DATABASE CONNECTION
+   - Verify MongoDB is running
+   - Check connection string in .env
+   - Ensure network access to database
+
+5. SERVICE NOT RESPONDING
+   - Check if service is running on correct port
+   - Verify API Gateway routing
+   - Check service logs for errors
+
+================================================================================
+END OF SYSTEM FLOW DOCUMENTATION
+================================================================================
+
+For more detailed information, refer to:
+- /server/API_DOCUMENTATION.md - Complete API reference
+- /client/API_INTEGRATION.md - Client-side integration guide
+- /server/PROJECT_SUMMARY.md - Technical architecture details
+- /QUICK_REFERENCE.md - Quick command reference
+
+Last Updated: November 16, 2025
+Version: 1.0
+================================================================================

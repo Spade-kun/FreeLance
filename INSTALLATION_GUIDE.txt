@@ -1,0 +1,903 @@
+================================================================================
+                    MERN FREELANCE INSTALLATION GUIDE
+                  Complete Setup for Windows, Linux & macOS
+================================================================================
+
+TABLE OF CONTENTS
+-----------------
+1. Prerequisites
+2. Initial Setup
+3. Server Installation (All Microservices)
+4. Client Installation
+5. Environment Configuration
+6. Running the Application
+7. Verification Steps
+8. Troubleshooting
+9. Platform-Specific Commands
+10. Quick Start Scripts
+
+================================================================================
+1. PREREQUISITES
+================================================================================
+
+Before installing, ensure you have the following installed:
+
+REQUIRED SOFTWARE:
+-----------------
+✓ Node.js (v16 or higher)
+  - Download: https://nodejs.org/
+  - Verify: node --version
+  - Should show: v16.x.x or higher
+
+✓ npm (comes with Node.js)
+  - Verify: npm --version
+  - Should show: 8.x.x or higher
+
+✓ MongoDB (v5.0 or higher)
+  - Windows: https://www.mongodb.com/try/download/community
+  - Install as a service (recommended)
+  - Verify: mongod --version
+
+✓ Git (for cloning repository)
+  - Download: https://git-scm.com/downloads
+  - Verify: git --version
+
+OPTIONAL (Recommended):
+----------------------
+✓ MongoDB Compass (GUI for MongoDB)
+✓ Postman (API testing)
+✓ VS Code (Code editor)
+
+================================================================================
+2. INITIAL SETUP
+================================================================================
+
+STEP 1: CLONE OR NAVIGATE TO PROJECT
+-------------------------------------
+If you already have the project:
+  cd path/to/MERN_FREELANCE
+
+If cloning from Git:
+  git clone <repository-url>
+  cd MERN_FREELANCE
+
+STEP 2: VERIFY PROJECT STRUCTURE
+---------------------------------
+Your project should have:
+  MERN_FREELANCE/
+  ├── client/          # React frontend
+  ├── server/          # Backend microservices
+  └── README.md
+
+STEP 3: ENSURE MONGODB IS RUNNING
+----------------------------------
+
+WINDOWS:
+  # If installed as service (automatic)
+  - MongoDB should already be running
+  
+  # To check if running:
+  - Open Services (Win + R, type 'services.msc')
+  - Look for "MongoDB Server"
+  - Status should be "Running"
+  
+  # If not running as service:
+  mongod
+
+LINUX/macOS:
+  # Start MongoDB
+  sudo systemctl start mongod    # Linux
+  brew services start mongodb    # macOS
+  
+  # Verify it's running
+  sudo systemctl status mongod   # Linux
+  brew services list             # macOS
+
+================================================================================
+3. SERVER INSTALLATION (ALL MICROSERVICES)
+================================================================================
+
+The server folder contains 8 microservices that need to be set up.
+
+OPTION A: AUTOMATIC INSTALLATION (RECOMMENDED)
+----------------------------------------------
+
+WINDOWS (PowerShell):
+  cd server
+  .\install-all.ps1
+
+WINDOWS (Command Prompt):
+  cd server
+  install-all.bat
+
+LINUX/macOS:
+  cd server
+  chmod +x install-all.sh
+  ./install-all.sh
+
+What this does:
+  ✓ Installs dependencies for API Gateway
+  ✓ Installs dependencies for all 7 microservices
+  ✓ Creates .env file if it doesn't exist
+  ✓ Verifies installations
+  ✓ Total time: ~5-10 minutes
+
+OPTION B: MANUAL INSTALLATION
+------------------------------
+
+If automatic installation fails, install manually:
+
+1. Navigate to server folder:
+   cd server
+
+2. Install API Gateway dependencies:
+   cd api-gateway
+   npm install
+   cd ..
+
+3. Install Auth Service dependencies:
+   cd auth-service
+   npm install
+   cd ..
+
+4. Install User Service dependencies:
+   cd user-service
+   npm install
+   cd ..
+
+5. Install Course Service dependencies:
+   cd course-service
+   npm install
+   cd ..
+
+6. Install Content Service dependencies:
+   cd content-service
+   npm install
+   cd ..
+
+7. Install Assessment Service dependencies:
+   cd assessment-service
+   npm install
+   cd ..
+
+8. Install Report Service dependencies:
+   cd report-service
+   npm install
+   cd ..
+
+9. Install Email Service dependencies:
+   cd email-service
+   npm install
+   cd ..
+
+VERIFY SERVER INSTALLATION:
+--------------------------
+All services should now have a node_modules folder.
+
+Check:
+  cd server
+  dir /s node_modules   # Windows CMD
+  ls -la */node_modules # Linux/macOS
+
+================================================================================
+4. CLIENT INSTALLATION
+================================================================================
+
+STEP 1: NAVIGATE TO CLIENT FOLDER
+----------------------------------
+From project root:
+  cd client
+
+STEP 2: INSTALL DEPENDENCIES
+-----------------------------
+  npm install
+
+This will install:
+  ✓ React and React DOM
+  ✓ React Router
+  ✓ Axios (API communication)
+  ✓ Tailwind CSS (styling)
+  ✓ Other UI libraries
+  
+Time: ~3-5 minutes
+
+STEP 3: VERIFY INSTALLATION
+---------------------------
+Check if node_modules exists:
+  WINDOWS:   dir node_modules
+  LINUX/MAC: ls -la node_modules
+
+You should see folders for all dependencies.
+
+================================================================================
+5. ENVIRONMENT CONFIGURATION
+================================================================================
+
+Both server and client need environment variables configured.
+
+SERVER CONFIGURATION:
+--------------------
+
+STEP 1: Create .env file in server folder
+  cd server
+  
+  WINDOWS:
+    copy .env.example .env
+  
+  LINUX/macOS:
+    cp .env.example .env
+
+STEP 2: Edit server/.env with your values:
+
+# MongoDB Configuration
+MONGODB_URI=mongodb://localhost:27017/mern_freelance
+
+# JWT Secret (use a strong random string)
+JWT_SECRET=your_super_secret_jwt_key_change_this_in_production
+
+# Google OAuth (if using Google authentication)
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+GOOGLE_REDIRECT_URI=http://localhost:5000/api/auth/google/callback
+
+# Google Drive (if using file uploads)
+GOOGLE_DRIVE_CLIENT_ID=your_drive_client_id
+GOOGLE_DRIVE_CLIENT_SECRET=your_drive_client_secret
+GOOGLE_DRIVE_REDIRECT_URI=http://localhost:5000/api/content/oauth2callback
+GOOGLE_DRIVE_REFRESH_TOKEN=your_refresh_token
+
+# Email Configuration (for notifications)
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASSWORD=your_app_password
+
+# PayPal (if using payment features)
+PAYPAL_CLIENT_ID=your_paypal_client_id
+PAYPAL_CLIENT_SECRET=your_paypal_client_secret
+PAYPAL_MODE=sandbox
+
+# Server Ports (usually don't need to change)
+API_GATEWAY_PORT=5000
+AUTH_SERVICE_PORT=5001
+USER_SERVICE_PORT=5002
+COURSE_SERVICE_PORT=5003
+CONTENT_SERVICE_PORT=5004
+ASSESSMENT_SERVICE_PORT=5005
+REPORT_SERVICE_PORT=5006
+EMAIL_SERVICE_PORT=5007
+
+# CORS Configuration
+CLIENT_URL=http://localhost:5173
+
+CLIENT CONFIGURATION:
+--------------------
+
+STEP 1: Create .env file in client folder
+  cd client
+  
+  WINDOWS:
+    copy .env.example .env
+  
+  LINUX/macOS:
+    cp .env.example .env
+
+STEP 2: Edit client/.env:
+
+# API Gateway URL
+VITE_API_URL=http://localhost:5000/api
+
+# Google OAuth Client ID (for frontend)
+VITE_GOOGLE_CLIENT_ID=your_google_client_id
+
+# PayPal Client ID (for frontend)
+VITE_PAYPAL_CLIENT_ID=your_paypal_client_id
+
+# App Configuration
+VITE_APP_NAME=MERN Freelance LMS
+VITE_APP_URL=http://localhost:5173
+
+MINIMAL SETUP (For Testing):
+----------------------------
+At minimum, you need:
+  
+  server/.env:
+    MONGODB_URI=mongodb://localhost:27017/mern_freelance
+    JWT_SECRET=test_secret_key_12345
+    CLIENT_URL=http://localhost:5173
+  
+  client/.env:
+    VITE_API_URL=http://localhost:5000/api
+
+================================================================================
+6. RUNNING THE APPLICATION
+================================================================================
+
+You need to run BOTH server and client simultaneously.
+
+OPTION A: AUTOMATIC START (RECOMMENDED)
+---------------------------------------
+
+WINDOWS (PowerShell):
+  # From server folder
+  cd server
+  .\start-all.ps1
+
+WINDOWS (Command Prompt):
+  cd server
+  start-all.bat
+
+LINUX/macOS:
+  cd server
+  chmod +x start-all.sh
+  ./start-all.sh
+
+This will start:
+  ✓ API Gateway (Port 5000)
+  ✓ Auth Service (Port 5001)
+  ✓ User Service (Port 5002)
+  ✓ Course Service (Port 5003)
+  ✓ Content Service (Port 5004)
+  ✓ Assessment Service (Port 5005)
+  ✓ Report Service (Port 5006)
+  ✓ Email Service (Port 5007)
+
+Then start the client separately:
+  cd client
+  npm run dev
+
+Client will run on: http://localhost:5173
+
+OPTION B: MANUAL START
+----------------------
+
+Open MULTIPLE TERMINAL WINDOWS (You need at least 9 terminals!)
+
+TERMINAL 1 - API Gateway:
+  cd server/api-gateway
+  npm start
+
+TERMINAL 2 - Auth Service:
+  cd server/auth-service
+  npm start
+
+TERMINAL 3 - User Service:
+  cd server/user-service
+  npm start
+
+TERMINAL 4 - Course Service:
+  cd server/course-service
+  npm start
+
+TERMINAL 5 - Content Service:
+  cd server/content-service
+  npm start
+
+TERMINAL 6 - Assessment Service:
+  cd server/assessment-service
+  npm start
+
+TERMINAL 7 - Report Service:
+  cd server/report-service
+  npm start
+
+TERMINAL 8 - Email Service:
+  cd server/email-service
+  npm start
+
+TERMINAL 9 - React Client:
+  cd client
+  npm run dev
+
+DEVELOPMENT MODE:
+----------------
+For development with auto-reload:
+
+  cd server/[service-name]
+  npm run dev
+
+This uses nodemon to auto-restart on file changes.
+
+STOPPING THE APPLICATION:
+------------------------
+
+WINDOWS (PowerShell):
+  cd server
+  .\stop-all.ps1
+
+WINDOWS (Command Prompt):
+  cd server
+  stop-all.bat
+
+LINUX/macOS:
+  cd server
+  ./stop-all.sh
+
+OR manually press Ctrl+C in each terminal window.
+
+================================================================================
+7. VERIFICATION STEPS
+================================================================================
+
+After starting all services, verify they're running:
+
+STEP 1: CHECK SERVER SERVICES
+------------------------------
+
+WINDOWS (PowerShell):
+  cd server
+  .\check-services.ps1
+
+WINDOWS (Command Prompt):
+  cd server
+  check-services.bat
+
+LINUX/macOS:
+  cd server
+  ./check-services.sh
+
+Expected output:
+  ✓ API Gateway: Running on port 5000
+  ✓ Auth Service: Running on port 5001
+  ✓ User Service: Running on port 5002
+  ✓ Course Service: Running on port 5003
+  ✓ Content Service: Running on port 5004
+  ✓ Assessment Service: Running on port 5005
+  ✓ Report Service: Running on port 5006
+  ✓ Email Service: Running on port 5007
+
+STEP 2: CHECK CLIENT
+--------------------
+Open browser and navigate to:
+  http://localhost:5173
+
+You should see the login/signup page.
+
+STEP 3: TEST API GATEWAY
+-------------------------
+Open browser or Postman and test:
+  http://localhost:5000/api/health
+
+Expected response:
+  {
+    "success": true,
+    "message": "API Gateway is running",
+    "timestamp": "2025-11-16T..."
+  }
+
+STEP 4: CHECK MONGODB CONNECTION
+---------------------------------
+The server logs should show:
+  "MongoDB connected successfully"
+
+If you see errors, check MongoDB is running.
+
+STEP 5: TEST AUTHENTICATION
+----------------------------
+Try to signup/login through the UI or test with:
+  POST http://localhost:5000/api/auth/signup
+  Body: {
+    "name": "Test User",
+    "email": "test@example.com",
+    "password": "password123",
+    "role": "student"
+  }
+
+Expected: Success response with token
+
+================================================================================
+8. TROUBLESHOOTING
+================================================================================
+
+ISSUE 1: "npm: command not found"
+----------------------------------
+Solution: Node.js is not installed or not in PATH
+  1. Download and install Node.js from nodejs.org
+  2. Restart terminal/computer
+  3. Verify: node --version
+
+ISSUE 2: "MongoDB connection failed"
+-------------------------------------
+Solution: MongoDB is not running
+  WINDOWS:
+    - Check Services for "MongoDB Server"
+    - Or run: mongod
+  
+  LINUX:
+    sudo systemctl start mongod
+  
+  macOS:
+    brew services start mongodb-community
+
+ISSUE 3: "Port already in use"
+-------------------------------
+Solution: Another process is using the port
+  
+  WINDOWS:
+    # Find process on port 5000
+    netstat -ano | findstr :5000
+    
+    # Kill process (use PID from above)
+    taskkill /PID <PID> /F
+  
+  LINUX/macOS:
+    # Find and kill process
+    lsof -ti:5000 | xargs kill -9
+
+ISSUE 4: "Cannot find module"
+------------------------------
+Solution: Dependencies not installed
+  cd [service-folder]
+  rm -rf node_modules
+  rm package-lock.json
+  npm install
+
+ISSUE 5: "CORS error in browser"
+---------------------------------
+Solution: CLIENT_URL in server/.env doesn't match
+  1. Edit server/.env
+  2. Set CLIENT_URL=http://localhost:5173
+  3. Restart API Gateway
+
+ISSUE 6: "Permission denied" (Linux/macOS)
+-------------------------------------------
+Solution: Scripts don't have execute permission
+  chmod +x server/*.sh
+  chmod +x client/*.sh
+
+ISSUE 7: "Module not found: @vitejs/plugin-react"
+-------------------------------------------------
+Solution: Client dependencies not installed
+  cd client
+  npm install
+
+ISSUE 8: "MongoServerError: Authentication failed"
+--------------------------------------------------
+Solution: MongoDB credentials issue
+  1. Check MONGODB_URI in server/.env
+  2. For local MongoDB, use:
+     MONGODB_URI=mongodb://localhost:27017/mern_freelance
+  3. No username/password needed for local
+
+ISSUE 9: Scripts won't run in PowerShell
+-----------------------------------------
+Solution: Execution policy restriction
+  # Run PowerShell as Administrator
+  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+  
+  # Then try running scripts again
+
+ISSUE 10: "EADDRINUSE" Error
+-----------------------------
+Solution: Service already running on that port
+  1. Stop all services: ./stop-all.sh or stop-all.bat
+  2. Wait 5 seconds
+  3. Start again: ./start-all.sh or start-all.bat
+
+================================================================================
+9. PLATFORM-SPECIFIC COMMANDS
+================================================================================
+
+WINDOWS COMMAND PROMPT:
+-----------------------
+Navigate:           cd folder_name
+List files:         dir
+Copy file:          copy file1 file2
+Remove folder:      rmdir /s folder_name
+Check port:         netstat -ano | findstr :5000
+Kill process:       taskkill /PID <PID> /F
+
+WINDOWS POWERSHELL:
+------------------
+Navigate:           cd folder_name
+List files:         ls or dir
+Copy file:          Copy-Item file1 file2
+Remove folder:      Remove-Item -Recurse folder_name
+Check port:         Get-NetTCPConnection | Where-Object {$_.LocalPort -eq 5000}
+Kill process:       Stop-Process -Id <PID> -Force
+
+LINUX/macOS (Bash/Zsh):
+-----------------------
+Navigate:           cd folder_name
+List files:         ls -la
+Copy file:          cp file1 file2
+Remove folder:      rm -rf folder_name
+Check port:         lsof -i :5000
+Kill process:       kill -9 <PID>
+
+================================================================================
+10. QUICK START SCRIPTS
+================================================================================
+
+All scripts are located in the server folder.
+
+INSTALLATION SCRIPTS:
+--------------------
+install-all.bat       # Windows Command Prompt
+install-all.ps1       # Windows PowerShell
+install-all.sh        # Linux/macOS
+
+Usage:
+  cd server
+  ./install-all.sh    # or .bat/.ps1 for Windows
+
+START SCRIPTS:
+-------------
+start-all.bat         # Windows Command Prompt
+start-all.ps1         # Windows PowerShell
+start-all.sh          # Linux/macOS
+
+Usage:
+  cd server
+  ./start-all.sh      # or .bat/.ps1 for Windows
+
+STOP SCRIPTS:
+------------
+stop-all.bat          # Windows Command Prompt
+stop-all.ps1          # Windows PowerShell
+stop-all.sh           # Linux/macOS
+
+Usage:
+  cd server
+  ./stop-all.sh       # or .bat/.ps1 for Windows
+
+CHECK SCRIPTS:
+-------------
+check-services.bat    # Windows Command Prompt
+check-services.ps1    # Windows PowerShell
+check-services.sh     # Linux/macOS
+
+Usage:
+  cd server
+  ./check-services.sh # or .bat/.ps1 for Windows
+
+TEST SCRIPTS:
+------------
+test-api.sh           # Test API endpoints
+test-auth.sh          # Test authentication
+test-id-generation.sh # Test ID generation
+
+Usage:
+  cd server
+  ./test-api.sh
+
+================================================================================
+COMPLETE STEP-BY-STEP INSTALLATION (Windows Example)
+================================================================================
+
+1. ENSURE PREREQUISITES:
+   - Open Command Prompt
+   - Check: node --version (should be v16+)
+   - Check: npm --version (should be 8+)
+   - Check: mongod --version (should be 5+)
+   - Ensure MongoDB service is running
+
+2. NAVIGATE TO PROJECT:
+   cd C:\path\to\MERN_FREELANCE
+
+3. INSTALL SERVER:
+   cd server
+   install-all.bat
+   # Wait for completion (~5-10 minutes)
+
+4. CONFIGURE SERVER:
+   copy .env.example .env
+   notepad .env
+   # Edit at minimum:
+   # MONGODB_URI=mongodb://localhost:27017/mern_freelance
+   # JWT_SECRET=my_secret_key_123
+   # CLIENT_URL=http://localhost:5173
+   # Save and close
+
+5. INSTALL CLIENT:
+   cd ..\client
+   npm install
+   # Wait for completion (~3-5 minutes)
+
+6. CONFIGURE CLIENT:
+   copy .env.example .env
+   notepad .env
+   # Edit:
+   # VITE_API_URL=http://localhost:5000/api
+   # Save and close
+
+7. START SERVER:
+   cd ..\server
+   start-all.bat
+   # All services will start in background
+
+8. START CLIENT:
+   cd ..\client
+   npm run dev
+   # Client starts on port 5173
+
+9. VERIFY:
+   - Open browser: http://localhost:5173
+   - You should see the application
+   - Try signing up with test account
+
+10. CELEBRATE! 🎉
+    Your application is now running!
+
+================================================================================
+COMPLETE STEP-BY-STEP INSTALLATION (Linux/macOS Example)
+================================================================================
+
+1. ENSURE PREREQUISITES:
+   node --version    # Should be v16+
+   npm --version     # Should be 8+
+   mongod --version  # Should be 5+
+
+2. START MONGODB:
+   sudo systemctl start mongod    # Linux
+   brew services start mongodb    # macOS
+
+3. NAVIGATE TO PROJECT:
+   cd ~/path/to/MERN_FREELANCE
+
+4. INSTALL SERVER:
+   cd server
+   chmod +x *.sh
+   ./install-all.sh
+   # Wait for completion
+
+5. CONFIGURE SERVER:
+   cp .env.example .env
+   nano .env  # or vim, gedit, etc.
+   # Edit configuration
+   # Save: Ctrl+O, Exit: Ctrl+X
+
+6. INSTALL CLIENT:
+   cd ../client
+   npm install
+
+7. CONFIGURE CLIENT:
+   cp .env.example .env
+   nano .env
+   # Edit configuration
+   # Save and exit
+
+8. START SERVER:
+   cd ../server
+   ./start-all.sh
+
+9. START CLIENT (new terminal):
+   cd client
+   npm run dev
+
+10. VERIFY:
+    - Open: http://localhost:5173
+    - Test the application
+
+================================================================================
+MAINTENANCE COMMANDS
+================================================================================
+
+UPDATE DEPENDENCIES:
+-------------------
+# Update server dependencies
+cd server
+cd api-gateway && npm update && cd ..
+cd auth-service && npm update && cd ..
+# ... repeat for all services
+
+# Update client dependencies
+cd client
+npm update
+
+CLEAR CACHE AND REINSTALL:
+--------------------------
+# Server
+cd server/[service-name]
+rm -rf node_modules package-lock.json
+npm install
+
+# Client
+cd client
+rm -rf node_modules package-lock.json
+npm install
+
+RESET DATABASE:
+--------------
+# Connect to MongoDB
+mongo mern_freelance
+
+# Drop database
+use mern_freelance
+db.dropDatabase()
+
+# Or using MongoDB Compass:
+# Connect to localhost:27017
+# Right-click database -> Drop Database
+
+VIEW LOGS:
+---------
+Logs are stored in: server/logs/
+
+# View combined logs
+cd server/logs
+cat combined.log
+
+# View error logs
+cat error.log
+
+# View specific service logs
+cat auth-service.log
+
+BACKUP DATABASE:
+---------------
+# Export database
+mongodump --db mern_freelance --out ./backup
+
+# Import database
+mongorestore --db mern_freelance ./backup/mern_freelance
+
+================================================================================
+PRODUCTION DEPLOYMENT NOTES
+================================================================================
+
+Before deploying to production:
+
+1. ENVIRONMENT VARIABLES:
+   - Use strong JWT_SECRET (at least 32 characters)
+   - Use production MongoDB URI (MongoDB Atlas)
+   - Set proper CORS CLIENT_URL
+   - Use production Google OAuth credentials
+   - Use production PayPal credentials
+
+2. BUILD CLIENT:
+   cd client
+   npm run build
+   # Creates optimized production build in dist/
+
+3. SECURITY:
+   - Never commit .env files
+   - Use HTTPS in production
+   - Enable rate limiting
+   - Set up proper firewall rules
+   - Use environment-specific configs
+
+4. HOSTING OPTIONS:
+   - Frontend: Vercel, Netlify, AWS S3
+   - Backend: AWS EC2, DigitalOcean, Heroku
+   - Database: MongoDB Atlas
+
+5. MONITORING:
+   - Set up error logging (Sentry)
+   - Monitor server performance
+   - Set up uptime monitoring
+   - Configure backup systems
+
+================================================================================
+HELPFUL RESOURCES
+================================================================================
+
+Documentation Files:
+- SYSTEM_FLOW.txt          - Complete system architecture
+- README.md                - Project overview
+- server/API_DOCUMENTATION.md  - API endpoints
+- server/QUICK_START.md    - Quick start guide
+- client/README.md         - Client-specific docs
+
+Official Documentation:
+- Node.js: https://nodejs.org/docs
+- React: https://react.dev
+- MongoDB: https://docs.mongodb.com
+- Express: https://expressjs.com
+
+Support:
+- Check logs in server/logs/
+- Use MongoDB Compass for database issues
+- Use Postman for API testing
+- Check browser console for client errors
+
+================================================================================
+END OF INSTALLATION GUIDE
+================================================================================
+
+Questions? Issues? 
+Check the troubleshooting section or refer to the documentation files.
+
+Last Updated: November 16, 2025
+Version: 1.0
+================================================================================
