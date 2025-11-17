@@ -31,10 +31,18 @@ export const register = async (req, res) => {
   try {
     const { email, password, role, userId } = req.body;
 
-    // Check if user already exists
+    // Check if user already exists in auth service
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'User with this email already exists' });
+    }
+
+    // Check if user exists in any role collection in user-service
+    const userRoleInfo = await findUserRoleByEmail(email);
+    if (userRoleInfo) {
+      return res.status(400).json({ 
+        message: `User with this email already exists as ${userRoleInfo.role}` 
+      });
     }
 
     // Create new user
@@ -85,6 +93,34 @@ export const login = async (req, res) => {
 
     if (!isPasswordValid) {
       return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    // CHECK IF USER STILL EXISTS IN ROLE COLLECTION
+    // This is critical when users are deleted directly from database
+    console.log(`🔍 Verifying user exists in ${user.role} collection...`);
+    const userRoleInfo = await findUserRoleByEmail(email);
+    
+    if (!userRoleInfo) {
+      // User exists in auth but not in role collection (was deleted)
+      console.log(`❌ User ${email} not found in any role collection`);
+      
+      // Clean up the orphaned auth record
+      await User.findByIdAndDelete(user._id);
+      console.log(`🗑️ Deleted orphaned auth record for ${email}`);
+      
+      return res.status(401).json({ 
+        message: 'Invalid email or password. Account may have been removed.' 
+      });
+    }
+
+    // Verify the role matches
+    if (userRoleInfo.role !== user.role) {
+      console.log(`⚠️ Role mismatch: Auth has ${user.role}, but user is ${userRoleInfo.role}`);
+      // Update the role in auth record
+      user.role = userRoleInfo.role;
+      user.userId = userRoleInfo.userId;
+      await user.save();
+      console.log(`✅ Updated auth record with correct role: ${userRoleInfo.role}`);
     }
 
     // Generate tokens
@@ -508,5 +544,33 @@ export const completeGoogleRegistration = async (req, res) => {
   } catch (error) {
     console.error('Complete Google registration error:', error);
     res.status(500).json({ message: 'Server error during registration' });
+  }
+};
+
+// @desc    Delete user by email (Internal use by User Service)
+// @route   DELETE /api/auth/user/:email
+// @access  Internal
+export const deleteUserByEmail = async (req, res) => {
+  try {
+    const { email } = req.params;
+
+    const user = await User.findOneAndDelete({ email });
+
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Auth record not found' 
+      });
+    }
+
+    console.log(`🗑️ Deleted auth record for: ${email}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Auth record deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ message: 'Server error during deletion' });
   }
 };

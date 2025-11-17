@@ -13,7 +13,9 @@ import {
   getStudentSubmissions,
   gradeSubmission,
   getCourseGrades,
-  getStudentGrades
+  getStudentGrades,
+  getMVCCStats,
+  resetMVCCStats
 } from '../controllers/assessmentController.js';
 import {
   uploadFile,
@@ -57,5 +59,9 @@ router.get('/files/:fileId', downloadFile); // Serve file (can view in browser)
 // OAuth2 routes for Google Drive
 router.get('/auth/google', getAuthUrl);
 router.get('/oauth2callback', oauth2callback);
+
+// MVCC monitoring routes
+router.get('/mvcc/stats', getMVCCStats);
+router.post('/mvcc/reset-stats', resetMVCCStats);
 
 export default router;

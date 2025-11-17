@@ -58,6 +58,21 @@ const activitySchema = new mongoose.Schema({
   isPublished: {
     type: Boolean,
     default: false
+  },
+  // MVCC version field for concurrency control
+  __version: {
+    type: Number,
+    default: 1
+  },
+  // Track total submissions for this activity
+  totalSubmissions: {
+    type: Number,
+    default: 0
+  },
+  // Maximum attempts allowed per student
+  maxAttempts: {
+    type: Number,
+    default: 1
   }
 }, {
   timestamps: true

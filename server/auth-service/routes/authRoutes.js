@@ -10,7 +10,8 @@ import {
   forgotPassword,
   resetPassword,
   googleCallback,
-  completeGoogleRegistration
+  completeGoogleRegistration,
+  deleteUserByEmail
 } from '../controllers/authController.js';
 import { authenticate } from '../middleware/auth.js';
 import { validateRegister, validateLogin, validateChangePassword, validateResetPassword } from '../middleware/validator.js';
@@ -45,5 +46,8 @@ router.get('/google/callback',
 );
 
 router.post('/google/complete', completeGoogleRegistration);
+
+// Internal route for user service to delete auth records
+router.delete('/user/:email', deleteUserByEmail);
 
 export default router;

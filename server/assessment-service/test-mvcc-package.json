@@ -1,0 +1,11 @@
+{
+  "name": "assessment-service-mvcc-test",
+  "version": "1.0.0",
+  "description": "MVCC Concurrency Control Tests",
+  "scripts": {
+    "test:mvcc": "node test-mvcc.js"
+  },
+  "devDependencies": {
+    "axios": "^1.6.0"
+  }
+}

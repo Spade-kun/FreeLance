@@ -1,6 +1,7 @@
 import Activity from '../models/Activity.js';
 import Submission from '../models/Submission.js';
 import axios from 'axios';
+import mvccService from '../services/mvccService.js';
 
 // ACTIVITY CONTROLLERS
 
@@ -136,39 +137,71 @@ export const createSubmission = async (req, res) => {
     const activityId = req.params.activityId || req.body.activityId;
     
     if (!activityId) {
-      return res.status(400).json({ message: 'Activity ID is required' });
+      return res.status(400).json({ 
+        success: false,
+        message: 'Activity ID is required' 
+      });
     }
 
-    const activity = await Activity.findById(activityId);
-    if (!activity) {
-      return res.status(404).json({ message: 'Activity not found' });
-    }
-
-    // Check if submission is late
-    const isLate = new Date() > activity.dueDate;
-    if (isLate && !activity.allowLateSubmission) {
-      return res.status(400).json({ message: 'Late submissions are not allowed for this activity' });
+    if (!req.body.studentId) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Student ID is required' 
+      });
     }
 
     const submissionData = {
       ...req.body,
-      activityId: activityId,
-      isLate
+      activityId: activityId
     };
 
-    console.log('💾 Creating submission:', submissionData);
+    console.log('💾 Creating submission with MVCC protection:', {
+      activityId,
+      studentId: req.body.studentId
+    });
 
-    const submission = await Submission.create(submissionData);
+    // Use MVCC service for concurrent submission handling
+    const result = await mvccService.submitWithMVCC(submissionData);
     
-    console.log('✅ Submission created successfully:', submission._id);
+    console.log('✅ Submission created successfully with MVCC:', result.data._id);
     
-    res.status(201).json({ success: true, data: submission });
+    res.status(201).json(result);
+    
   } catch (error) {
-    console.error('❌ Error creating submission:', error);
-    if (error.code === 11000) {
-      return res.status(400).json({ message: 'You have already submitted this activity' });
+    console.error('❌ Error creating submission:', error.message);
+    
+    const statusCode = error.statusCode || 400;
+    
+    // Handle specific error codes
+    if (error.code === 'MAX_ATTEMPTS_EXCEEDED') {
+      return res.status(statusCode).json({ 
+        success: false,
+        message: error.message,
+        code: 'MAX_ATTEMPTS_EXCEEDED'
+      });
     }
-    res.status(400).json({ message: error.message });
+    
+    if (error.code === 'DUPLICATE_SUBMISSION') {
+      return res.status(statusCode).json({ 
+        success: false,
+        message: error.message,
+        code: 'DUPLICATE_SUBMISSION'
+      });
+    }
+    
+    if (error.code === 'VERSION_CONFLICT') {
+      return res.status(statusCode).json({ 
+        success: false,
+        message: 'Unable to submit after multiple attempts. Please try again.',
+        code: 'VERSION_CONFLICT',
+        details: error.message
+      });
+    }
+    
+    res.status(statusCode).json({ 
+      success: false,
+      message: error.message 
+    });
   }
 };
 
@@ -265,5 +298,38 @@ export const getStudentGrades = async (req, res) => {
     res.status(200).json({ success: true, data: submissions });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// MVCC MONITORING
+
+export const getMVCCStats = async (req, res) => {
+  try {
+    const stats = mvccService.getStats();
+    res.status(200).json({ 
+      success: true, 
+      data: stats,
+      message: 'MVCC concurrency control statistics'
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+};
+
+export const resetMVCCStats = async (req, res) => {
+  try {
+    mvccService.resetStats();
+    res.status(200).json({ 
+      success: true, 
+      message: 'MVCC statistics reset successfully'
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
   }
 };

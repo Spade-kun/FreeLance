@@ -56,6 +56,15 @@ const submissionSchema = new mongoose.Schema({
   },
   gradedAt: {
     type: Date
+  },
+  // MVCC version field for concurrency control
+  __version: {
+    type: Number,
+    default: 1
+  },
+  attemptNumber: {
+    type: Number,
+    default: 1
   }
 }, {
   timestamps: true
@@ -63,5 +72,8 @@ const submissionSchema = new mongoose.Schema({
 
 // Compound index to prevent duplicate submissions
 submissionSchema.index({ activityId: 1, studentId: 1 }, { unique: true });
+
+// Index for version-based queries
+submissionSchema.index({ activityId: 1, studentId: 1, __version: 1 });
 
 export default mongoose.model('Submission', submissionSchema);

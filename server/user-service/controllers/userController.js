@@ -102,6 +102,16 @@ export const deleteAdmin = async (req, res) => {
     if (!admin) {
       return res.status(404).json({ message: 'Admin not found' });
     }
+    
+    // Also delete auth record
+    try {
+      await axios.delete(`${AUTH_SERVICE_URL}/api/auth/user/${admin.email}`);
+      console.log(`✅ Deleted auth record for admin: ${admin.email}`);
+    } catch (authError) {
+      console.warn(`⚠️ Could not delete auth record for ${admin.email}:`, authError.message);
+      // Don't fail the delete if auth deletion fails
+    }
+    
     res.status(200).json({ success: true, message: 'Admin deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -183,6 +193,16 @@ export const deleteInstructor = async (req, res) => {
     if (!instructor) {
       return res.status(404).json({ message: 'Instructor not found' });
     }
+    
+    // Also delete auth record
+    try {
+      await axios.delete(`${AUTH_SERVICE_URL}/api/auth/user/${instructor.email}`);
+      console.log(`✅ Deleted auth record for instructor: ${instructor.email}`);
+    } catch (authError) {
+      console.warn(`⚠️ Could not delete auth record for ${instructor.email}:`, authError.message);
+      // Don't fail the delete if auth deletion fails
+    }
+    
     res.status(200).json({ success: true, message: 'Instructor deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -264,6 +284,16 @@ export const deleteStudent = async (req, res) => {
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });
     }
+    
+    // Also delete auth record
+    try {
+      await axios.delete(`${AUTH_SERVICE_URL}/api/auth/user/${student.email}`);
+      console.log(`✅ Deleted auth record for student: ${student.email}`);
+    } catch (authError) {
+      console.warn(`⚠️ Could not delete auth record for ${student.email}:`, authError.message);
+      // Don't fail the delete if auth deletion fails
+    }
+    
     res.status(200).json({ success: true, message: 'Student deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
