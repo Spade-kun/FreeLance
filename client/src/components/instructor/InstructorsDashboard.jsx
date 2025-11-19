@@ -818,12 +818,12 @@ export default function InstructorDashboard() {
         files: moduleFiles
       });
       
-      alert('✅ Module created successfully!');
+      setModal({ isOpen: true, title: 'Success', message: 'Module created successfully!', type: 'success' });
       resetModuleForm();
       await fetchModules(selectedCourse._id);
     } catch (err) {
       console.error('Error creating module:', err);
-      alert('❌ Failed to create module: ' + err.message);
+      setModal({ isOpen: true, title: 'Error', message: 'Failed to create module: ' + err.message, type: 'error' });
       setLoading(false);
     }
   };
@@ -841,12 +841,12 @@ export default function InstructorDashboard() {
         files: moduleFiles
       });
       
-      alert('✅ Module updated successfully!');
+      setModal({ isOpen: true, title: 'Success', message: 'Module updated successfully!', type: 'success' });
       resetModuleForm();
       await fetchModules(selectedCourse._id);
     } catch (err) {
       console.error('Error updating module:', err);
-      alert('❌ Failed to update module: ' + err.message);
+      setModal({ isOpen: true, title: 'Error', message: 'Failed to update module: ' + err.message, type: 'error' });
       setLoading(false);
     }
   };
@@ -857,11 +857,11 @@ export default function InstructorDashboard() {
     try {
       setLoading(true);
       await api.deleteModule(moduleId);
-      alert('✅ Module deleted successfully!');
+      setModal({ isOpen: true, title: 'Success', message: 'Module deleted successfully!', type: 'success' });
       await fetchModules(selectedCourse._id);
     } catch (err) {
       console.error('Error deleting module:', err);
-      alert('❌ Failed to delete module: ' + err.message);
+      setModal({ isOpen: true, title: 'Error', message: 'Failed to delete module: ' + err.message, type: 'error' });
       setLoading(false);
     }
   };
@@ -928,12 +928,12 @@ export default function InstructorDashboard() {
         content: lessonContent.trim()
       });
       
-      alert('✅ Lesson created successfully!');
+      setModal({ isOpen: true, title: 'Success', message: 'Lesson created successfully!', type: 'success' });
       resetLessonForm();
       await fetchLessons(selectedModule._id);
     } catch (err) {
       console.error('Error creating lesson:', err);
-      alert('❌ Failed to create lesson: ' + err.message);
+      setModal({ isOpen: true, title: 'Error', message: 'Failed to create lesson: ' + err.message, type: 'error' });
       setLoading(false);
     }
   };
@@ -952,12 +952,12 @@ export default function InstructorDashboard() {
         content: lessonContent.trim()
       });
       
-      alert('✅ Lesson updated successfully!');
+      setModal({ isOpen: true, title: 'Success', message: 'Lesson updated successfully!', type: 'success' });
       resetLessonForm();
       await fetchLessons(selectedModule._id);
     } catch (err) {
       console.error('Error updating lesson:', err);
-      alert('❌ Failed to update lesson: ' + err.message);
+      setModal({ isOpen: true, title: 'Error', message: 'Failed to update lesson: ' + err.message, type: 'error' });
       setLoading(false);
     }
   };
@@ -968,11 +968,11 @@ export default function InstructorDashboard() {
     try {
       setLoading(true);
       await api.deleteLesson(lessonId);
-      alert('✅ Lesson deleted successfully!');
+      setModal({ isOpen: true, title: 'Success', message: 'Lesson deleted successfully!', type: 'success' });
       await fetchLessons(selectedModule._id);
     } catch (err) {
       console.error('Error deleting lesson:', err);
-      alert('❌ Failed to delete lesson: ' + err.message);
+      setModal({ isOpen: true, title: 'Error', message: 'Failed to delete lesson: ' + err.message, type: 'error' });
       setLoading(false);
     }
   };

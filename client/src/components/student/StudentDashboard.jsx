@@ -276,7 +276,7 @@ export default function StudentDashboard() {
   const submitActivity = async () => {
     if (!selectedActivity) return;
     if (!submissionText.trim() && !submissionFile) {
-      alert('⚠️ Please provide a submission text or file');
+      setModal({ isOpen: true, title: 'Validation Error', message: 'Please provide a submission text or file', type: 'warning' });
       return;
     }
 
@@ -345,7 +345,12 @@ export default function StudentDashboard() {
       setLoading(false);
       
       // Show success message
-      alert('✅ Assignment submitted successfully!' + (submissionFile ? '\n📁 File uploaded successfully' : ''));
+      setModal({ 
+        isOpen: true, 
+        title: 'Success', 
+        message: 'Assignment submitted successfully!' + (submissionFile ? '\nFile uploaded successfully' : ''), 
+        type: 'success' 
+      });
       
       // Refresh dashboard data
       await fetchDashboardData();
@@ -353,7 +358,12 @@ export default function StudentDashboard() {
     } catch (err) {
       console.error('❌ Error submitting activity:', err);
       setLoading(false);
-      alert('❌ Failed to submit assignment: ' + (err.message || 'Unknown error') + '\n\nPlease try again.');
+      setModal({ 
+        isOpen: true, 
+        title: 'Submission Failed', 
+        message: 'Failed to submit assignment: ' + (err.message || 'Unknown error') + '\n\nPlease try again.', 
+        type: 'error' 
+      });
     }
   };
 
@@ -1434,7 +1444,7 @@ export default function StudentDashboard() {
       e.preventDefault();
       const amount = parseFloat(paymentAmount);
       if (!amount || amount <= 0) {
-        alert('Please enter a valid amount greater than 0');
+        setModal({ isOpen: true, title: 'Validation Error', message: 'Please enter a valid amount greater than 0', type: 'error' });
         return;
       }
       
@@ -1443,7 +1453,7 @@ export default function StudentDashboard() {
       const studentId = profile?._id || profile?.userId || profile?.id;
       
       if (!studentId) {
-        alert('Error: Student profile not loaded. Please refresh the page and try again.');
+        setModal({ isOpen: true, title: 'Error', message: 'Student profile not loaded. Please refresh the page and try again.', type: 'error' });
         return;
       }
       
@@ -1474,7 +1484,12 @@ export default function StudentDashboard() {
         if (response.success && response.data) {
           setPendingPaymentId(response.data._id);
           console.log('Pending payment created with ID:', response.data._id);
-          alert(`✅ Payment request created!\n\nAmount: $${amount}\nType: ${paymentDescription}\nStatus: Pending Admin Approval\n\nPlease wait for admin to approve your payment.`);
+          setModal({ 
+            isOpen: true, 
+            title: 'Payment Request Created', 
+            message: `Amount: $${amount}\nType: ${paymentDescription}\nStatus: Pending Admin Approval\n\nPlease wait for admin to approve your payment.`, 
+            type: 'success' 
+          });
           // Don't clear the form - keep data visible until approved
           // Don't show PayPal buttons - admin needs to approve first
         } else {
@@ -1482,7 +1497,7 @@ export default function StudentDashboard() {
         }
       } catch (error) {
         console.error('Error creating pending payment:', error);
-        alert('Error: Failed to create payment record. Please try again.');
+        setModal({ isOpen: true, title: 'Error', message: 'Failed to create payment record. Please try again.', type: 'error' });
       }
     };
 

@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import api from "../../services/api";
+import Modal from "../Modal/Modal";
 
 export default function PaymentsPage() {
   const [payments, setPayments] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'success' });
   const [filter, setFilter] = useState({
     status: '',
     paymentType: '',
@@ -93,22 +95,22 @@ export default function PaymentsPage() {
 
     try {
       await api.deletePayment(id);
-      alert('Payment deleted successfully');
+      setModal({ isOpen: true, title: 'Success', message: 'Payment deleted successfully', type: 'success' });
       fetchPayments();
       fetchStats();
     } catch (err) {
-      alert('Error deleting payment: ' + err.message);
+      setModal({ isOpen: true, title: 'Error', message: 'Error deleting payment: ' + err.message, type: 'error' });
     }
   };
 
   const handleUpdateStatus = async (id, newStatus) => {
     try {
       await api.updatePaymentStatus(id, newStatus);
-      alert('Payment status updated successfully');
+      setModal({ isOpen: true, title: 'Success', message: 'Payment status updated successfully', type: 'success' });
       fetchPayments();
       fetchStats();
     } catch (err) {
-      alert('Error updating status: ' + err.message);
+      setModal({ isOpen: true, title: 'Error', message: 'Error updating status: ' + err.message, type: 'error' });
     }
   };
 
@@ -119,11 +121,11 @@ export default function PaymentsPage() {
 
     try {
       await api.updatePaymentStatus(id, 'completed');
-      alert('✅ Payment approved successfully!');
+      setModal({ isOpen: true, title: 'Success', message: 'Payment approved successfully!', type: 'success' });
       fetchPayments();
       fetchStats();
     } catch (err) {
-      alert('Error approving payment: ' + err.message);
+      setModal({ isOpen: true, title: 'Error', message: 'Error approving payment: ' + err.message, type: 'error' });
     }
   };
 
@@ -388,21 +390,8 @@ export default function PaymentsPage() {
                           <button
                             className="btn ghost small"
                             onClick={() => {
-                              const details = `
-Payment Details:
---------------------------------
-Student: ${payment.studentName}
-Email: ${payment.studentEmail}
-Amount: ${formatCurrency(payment.amount, payment.currency)}
-Type: ${payment.paymentType}
-Method: ${payment.paymentMethod}
-Transaction ID: ${payment.transactionId}
-Payer: ${payment.payerName}
-Date: ${formatDate(payment.paymentDate)}
-Status: ${payment.status}
---------------------------------
-                              `.trim();
-                              alert(details);
+                              const details = `Student: ${payment.studentName}\nEmail: ${payment.studentEmail}\nAmount: ${formatCurrency(payment.amount, payment.currency)}\nType: ${payment.paymentType}\nMethod: ${payment.paymentMethod}\nTransaction ID: ${payment.transactionId}\nPayer: ${payment.payerName}\nDate: ${formatDate(payment.paymentDate)}\nStatus: ${payment.status}`;
+                              setModal({ isOpen: true, title: 'Payment Details', message: details, type: 'info' });
                             }}
                             style={{ fontSize: '12px', padding: '4px 8px' }}
                           >
@@ -448,6 +437,14 @@ Status: ${payment.status}
           </>
         )}
       </div>
+
+      <Modal 
+        isOpen={modal.isOpen} 
+        onClose={() => setModal({ ...modal, isOpen: false })} 
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+      />
     </div>
   );
 }

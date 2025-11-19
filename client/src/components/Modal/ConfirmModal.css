@@ -5,99 +5,97 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: transparent;
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 9999;
-  animation: fadeIn 0.2s ease-in-out;
+  animation: fadeIn 0.15s ease;
+  pointer-events: none;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* Confirm Modal Container */
 .confirm-modal-container {
   background: white;
-  border-radius: 16px;
-  padding: 32px;
-  min-width: 380px;
-  max-width: 450px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  animation: slideIn 0.3s ease-out;
+  border-radius: 12px;
+  padding: 24px;
+  min-width: 360px;
+  max-width: 420px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  animation: slideIn 0.2s ease;
+  pointer-events: auto;
 }
 
 @keyframes slideIn {
   from {
-    transform: translateY(-50px) scale(0.9);
+    transform: translateY(-20px);
     opacity: 0;
   }
   to {
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
     opacity: 1;
   }
+}
+
+/* Confirm Modal Top Section */
+.confirm-modal-container {
+  display: flex;
+  flex-direction: column;
 }
 
 /* Confirm Modal Icon */
 .confirm-modal-icon {
-  width: 64px;
-  height: 64px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 32px;
+  font-size: 26px;
   font-weight: bold;
-  margin-bottom: 20px;
-  animation: scaleIn 0.4s ease-out 0.1s backwards;
-}
-
-@keyframes scaleIn {
-  from {
-    transform: scale(0);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
+  margin: 0 auto 18px;
 }
 
 /* Warning/Danger Type */
 .confirm-modal-warning .confirm-modal-icon,
 .confirm-modal-danger .confirm-modal-icon {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
+  background: #f59e0b;
   color: white;
 }
 
 /* Info Type */
 .confirm-modal-info .confirm-modal-icon {
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  background: #3b82f6;
   color: white;
 }
 
 /* Question Type */
 .confirm-modal-question .confirm-modal-icon {
-  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  background: #8b5cf6;
   color: white;
 }
 
 /* Confirm Modal Content */
 .confirm-modal-content {
   width: 100%;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
+  text-align: center;
 }
 
 .confirm-modal-title {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 600;
-  margin: 0 0 12px 0;
+  margin: 0 0 8px 0;
   color: #1f2937;
 }
 
 .confirm-modal-message {
-  font-size: 16px;
+  font-size: 14px;
   color: #6b7280;
   margin: 0;
   line-height: 1.5;
@@ -106,17 +104,16 @@
 /* Confirm Modal Actions */
 .confirm-modal-actions {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
-  margin-top: 8px;
 }
 
 .confirm-modal-btn {
   flex: 1;
-  padding: 12px 24px;
+  padding: 10px 20px;
   border: none;
   border-radius: 8px;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -129,45 +126,41 @@
 
 .confirm-modal-cancel:hover {
   background: #e5e7eb;
-  transform: translateY(-1px);
 }
 
 .confirm-modal-confirm {
-  background: linear-gradient(135deg, #06b6d4, #0891b2);
+  background: #06b6d4;
   color: white;
-  box-shadow: 0 2px 8px rgba(6, 182, 212, 0.3);
 }
 
 .confirm-modal-confirm:hover {
-  background: linear-gradient(135deg, #0891b2, #0e7490);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4);
+  background: #0891b2;
 }
 
 .confirm-modal-confirm:active,
 .confirm-modal-cancel:active {
-  transform: translateY(0);
+  transform: scale(0.98);
 }
 
 /* Responsive Design */
 @media (max-width: 480px) {
   .confirm-modal-container {
-    min-width: 300px;
-    padding: 24px;
+    min-width: 280px;
+    padding: 20px;
   }
 
   .confirm-modal-icon {
-    width: 56px;
-    height: 56px;
-    font-size: 28px;
+    width: 46px;
+    height: 46px;
+    font-size: 22px;
   }
 
   .confirm-modal-title {
-    font-size: 20px;
+    font-size: 16px;
   }
 
   .confirm-modal-message {
-    font-size: 14px;
+    font-size: 13px;
   }
 
   .confirm-modal-actions {

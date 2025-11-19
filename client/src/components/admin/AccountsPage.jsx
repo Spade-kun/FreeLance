@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import api from "../../services/api";
 import { useRecaptcha } from "../../context/RecaptchaContext";
+import Modal from "../Modal/Modal";
 
 export default function AccountsPage() {
   const { getRecaptchaToken } = useRecaptcha();
@@ -8,6 +9,7 @@ export default function AccountsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
+  const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'success' });
   
   // Form states
   const [firstName, setFirstName] = useState("");
@@ -67,34 +69,34 @@ export default function AccountsPage() {
 
   const validateForm = () => {
     if (!firstName.trim() || !lastName.trim() || !email.trim()) {
-      alert("Please fill all required fields (First Name, Last Name, Email).");
+      setModal({ isOpen: true, title: 'Validation Error', message: 'Please fill all required fields (First Name, Last Name, Email).', type: 'error' });
       return false;
     }
 
     if (!editingUser && (!password.trim() || !confirmPassword.trim())) {
-      alert("Please enter password and confirm password.");
+      setModal({ isOpen: true, title: 'Validation Error', message: 'Please enter password and confirm password.', type: 'error' });
       return false;
     }
 
     if (!editingUser && password !== confirmPassword) {
-      alert("Passwords do not match!");
+      setModal({ isOpen: true, title: 'Validation Error', message: 'Passwords do not match!', type: 'error' });
       return false;
     }
 
     if (!editingUser && password.length < 6) {
-      alert("Password must be at least 6 characters long.");
+      setModal({ isOpen: true, title: 'Validation Error', message: 'Password must be at least 6 characters long.', type: 'error' });
       return false;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      alert("Please enter a valid email address.");
+      setModal({ isOpen: true, title: 'Validation Error', message: 'Please enter a valid email address.', type: 'error' });
       return false;
     }
 
     // Role-specific validation
     if (role === "instructor" && !specialization.trim()) {
-      alert("Specialization is required for instructors.");
+      setModal({ isOpen: true, title: 'Validation Error', message: 'Specialization is required for instructors.', type: 'error' });
       return false;
     }
 
@@ -135,13 +137,18 @@ export default function AccountsPage() {
       }
 
       if (response.success) {
-        alert(`✅ ${role.charAt(0).toUpperCase() + role.slice(1)} created successfully!\n\nEmail: ${email}\nPassword: ${password}\n\nUser can now login with these credentials.`);
+        setModal({ 
+          isOpen: true, 
+          title: 'Success', 
+          message: `${role.charAt(0).toUpperCase() + role.slice(1)} created successfully!\n\nEmail: ${email}\nPassword: ${password}\n\nUser can now login with these credentials.`, 
+          type: 'success' 
+        });
         resetForm();
         fetchAllUsers();
       }
     } catch (err) {
       console.error('Error creating user:', err);
-      alert(`❌ Failed to create user: ${err.message || 'Unknown error'}`);
+      setModal({ isOpen: true, title: 'Error', message: `Failed to create user: ${err.message || 'Unknown error'}`, type: 'error' });
     } finally {
       setFormLoading(false);
     }
@@ -182,13 +189,13 @@ export default function AccountsPage() {
       }
 
       if (response.success) {
-        alert('✅ User updated successfully!');
+        setModal({ isOpen: true, title: 'Success', message: 'User updated successfully!', type: 'success' });
         resetForm();
         fetchAllUsers();
       }
     } catch (err) {
       console.error('Error updating user:', err);
-      alert(`❌ Failed to update user: ${err.message || 'Unknown error'}`);
+      setModal({ isOpen: true, title: 'Error', message: `Failed to update user: ${err.message || 'Unknown error'}`, type: 'error' });
     } finally {
       setFormLoading(false);
     }
@@ -208,12 +215,12 @@ export default function AccountsPage() {
       }
 
       if (response.success) {
-        alert('User deleted successfully!');
+        setModal({ isOpen: true, title: 'Success', message: 'User deleted successfully!', type: 'success' });
         fetchAllUsers();
       }
     } catch (err) {
       console.error('Error deleting user:', err);
-      alert(err.message || 'Failed to delete user');
+      setModal({ isOpen: true, title: 'Error', message: err.message || 'Failed to delete user', type: 'error' });
     }
   };
 
@@ -564,6 +571,14 @@ export default function AccountsPage() {
           </tbody>
         </table>
       </div>
+
+      <Modal 
+        isOpen={modal.isOpen} 
+        onClose={() => setModal({ ...modal, isOpen: false })} 
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+      />
     </div>
   );
 }
