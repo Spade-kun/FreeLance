@@ -1440,7 +1440,9 @@ export default function StudentDashboard() {
       
       // Verify student profile exists
       const profile = studentProfile || currentUser;
-      if (!profile || !profile._id) {
+      const studentId = profile?._id || profile?.userId || profile?.id;
+      
+      if (!studentId) {
         alert('Error: Student profile not loaded. Please refresh the page and try again.');
         return;
       }
@@ -1449,8 +1451,8 @@ export default function StudentDashboard() {
         // Create pending payment record immediately
         const tempTransactionId = `PENDING-${Date.now()}`;
         const pendingPaymentData = {
-          studentId: profile._id,
-          studentName: `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || profile.email,
+          studentId: studentId,
+          studentName: `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || profile.email || 'Student',
           studentEmail: profile.email,
           amount: amount,
           currency: 'USD',

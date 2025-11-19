@@ -13,8 +13,6 @@ declare -a services=(
     "content-service:1005"
     "assessment-service:1006"
     "report-service:1007"
-    "email-service:1008"
-    "payment-service:1009"
 )
 
 running_count=0
@@ -51,7 +49,7 @@ echo ""
 echo "📊 Summary: $running_count running, $stopped_count stopped"
 echo ""
 
-if [ $running_count -eq 9 ]; then
+if [ $running_count -eq 7 ]; then
     echo "✅ All services are running!"
     echo ""
     echo "🌐 API Gateway: http://localhost:1001/api"
