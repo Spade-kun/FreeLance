@@ -37,13 +37,11 @@ export const register = async (req, res) => {
       return res.status(400).json({ message: 'User with this email already exists' });
     }
 
-    // Check if user exists in any role collection in user-service
-    const userRoleInfo = await findUserRoleByEmail(email);
-    if (userRoleInfo) {
-      return res.status(400).json({ 
-        message: `User with this email already exists as ${userRoleInfo.role}` 
-      });
-    }
+    // NOTE: We don't check role collections here because this endpoint is INTERNAL
+    // and should only be called by user-service AFTER it has already created the user
+    // in the appropriate role collection. The user-service validates email uniqueness
+    // before creating the user, so checking again here would incorrectly find the
+    // user that was just created by user-service.
 
     // Create new user
     const user = await User.create({

@@ -57,6 +57,7 @@ export default function StudentDashboard() {
   const [paymentDescription, setPaymentDescription] = useState('Tuition Fee');
   const [showPayPalButtons, setShowPayPalButtons] = useState(false);
   const [paymentHistory, setPaymentHistory] = useState([]);
+  const [pendingPaymentId, setPendingPaymentId] = useState(null);
 
   // Profile state
   const [studentProfile, setStudentProfile] = useState(null);
@@ -218,15 +219,50 @@ export default function StudentDashboard() {
       const studentId = currentUser?._id || currentUser?.userId || currentUser?.id;
       if (!studentId) {
         console.error('No student ID found');
+        setProfileLoading(false);
         return;
       }
       
       const response = await api.getStudentById(studentId);
-      setStudentProfile(response?.data || null);
+      if (response && response.data) {
+        setStudentProfile(response.data);
+      }
     } catch (err) {
       console.error('Error fetching student profile:', err);
+      setError('Failed to load profile');
     } finally {
       setProfileLoading(false);
+    }
+  };
+
+  const fetchPaymentHistory = async () => {
+    try {
+      const studentId = currentUser?._id || currentUser?.userId || currentUser?.id;
+      if (!studentId) {
+        console.error('No student ID found for payment history');
+        return;
+      }
+
+      const response = await api.getPaymentsByStudent(studentId);
+      if (response && response.success && response.data) {
+        // Transform payment data to match the display format
+        const formattedPayments = response.data.map(payment => ({
+          id: payment._id,
+          date: new Date(payment.paymentDate).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          }),
+          description: payment.paymentType,
+          method: payment.paymentMethod,
+          amount: payment.amount,
+          currency: payment.currency,
+          status: payment.status
+        }));
+        setPaymentHistory(formattedPayments);
+      }
+    } catch (err) {
+      console.error('Error fetching payment history:', err);
     }
   };
 
@@ -1389,17 +1425,67 @@ export default function StudentDashboard() {
 
   // ---------------- Payment ----------------
   const renderPayment = () => {
-    const handleProceedToPayment = (e) => {
+    // Fetch payment history when payment page is loaded
+    if (paymentHistory.length === 0 && currentUser) {
+      fetchPaymentHistory();
+    }
+
+    const handleProceedToPayment = async (e) => {
       e.preventDefault();
       const amount = parseFloat(paymentAmount);
       if (!amount || amount <= 0) {
-        alert('Please enter a valid amount');
+        alert('Please enter a valid amount greater than 0');
         return;
       }
-      setShowPayPalButtons(true);
+      
+      // Verify student profile exists
+      const profile = studentProfile || currentUser;
+      if (!profile || !profile._id) {
+        alert('Error: Student profile not loaded. Please refresh the page and try again.');
+        return;
+      }
+      
+      try {
+        // Create pending payment record immediately
+        const tempTransactionId = `PENDING-${Date.now()}`;
+        const pendingPaymentData = {
+          studentId: profile._id,
+          studentName: `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || profile.email,
+          studentEmail: profile.email,
+          amount: amount,
+          currency: 'USD',
+          paymentType: paymentDescription,
+          paymentMethod: 'PAYPAL',
+          transactionId: tempTransactionId,
+          paypalOrderId: tempTransactionId,
+          payerName: `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || profile.email,
+          payerEmail: profile.email,
+          description: `${paymentDescription} payment via PayPal - Awaiting completion`,
+          metadata: {
+            status: 'pending_paypal_approval'
+          }
+        };
+
+        console.log('Creating pending payment record:', pendingPaymentData);
+        const response = await api.createPayment(pendingPaymentData);
+        
+        if (response.success && response.data) {
+          setPendingPaymentId(response.data._id);
+          console.log('Pending payment created with ID:', response.data._id);
+          alert(`✅ Payment request created!\n\nAmount: $${amount}\nType: ${paymentDescription}\nStatus: Pending Admin Approval\n\nPlease wait for admin to approve your payment.`);
+          // Don't clear the form - keep data visible until approved
+          // Don't show PayPal buttons - admin needs to approve first
+        } else {
+          throw new Error('Failed to create pending payment record');
+        }
+      } catch (error) {
+        console.error('Error creating pending payment:', error);
+        alert('Error: Failed to create payment record. Please try again.');
+      }
     };
 
     const createOrder = (data, actions) => {
+      console.log('Creating PayPal order...');
       return actions.order.create({
         purchase_units: [{
           description: paymentDescription,
@@ -1407,41 +1493,133 @@ export default function StudentDashboard() {
             value: paymentAmount
           }
         }]
+      }).then((orderId) => {
+        console.log('PayPal order created:', orderId);
+        return orderId;
+      }).catch((error) => {
+        console.error('Error creating PayPal order:', error);
+        alert('Failed to create PayPal order. Please try again.');
+        throw error;
       });
     };
 
-    const onApprove = (data, actions) => {
-      return actions.order.capture().then((details) => {
-        // Payment successful
-        const newPayment = {
-          id: details.id,
-          date: new Date().toLocaleDateString(),
-          amount: parseFloat(paymentAmount),
-          method: 'PAYPAL',
-          description: paymentDescription,
-          status: 'Completed',
-          transactionId: details.id,
-          payer: details.payer.name.given_name + ' ' + details.payer.name.surname
-        };
+    const onApprove = async (data, actions) => {
+      return actions.order.capture().then(async (details) => {
+        // Payment successful - Update pending payment to completed
+        try {
+          const profile = studentProfile || currentUser;
+          
+          if (!profile || !profile._id) {
+            throw new Error('Student profile not found');
+          }
 
-        setPaymentHistory([newPayment, ...paymentHistory]);
-        setPaymentAmount('');
-        setPaymentDescription('Tuition Fee');
+          console.log('Payment approved! Updating payment record...');
+          console.log('PayPal details:', details);
+
+          if (pendingPaymentId) {
+            // Update existing pending payment to completed
+            try {
+              await api.updatePaymentStatus(pendingPaymentId, 'completed');
+              console.log('Payment status updated to completed');
+            } catch (updateError) {
+              console.error('Failed to update payment status:', updateError);
+              // Continue anyway since we'll create a new record
+            }
+          }
+
+          // Also create a completed payment record with actual PayPal details
+          const completedPaymentData = {
+            studentId: profile._id,
+            studentName: `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || profile.email,
+            studentEmail: profile.email,
+            amount: parseFloat(paymentAmount),
+            currency: 'USD',
+            paymentType: paymentDescription,
+            paymentMethod: 'PAYPAL',
+            transactionId: details.id,
+            paypalOrderId: data.orderID,
+            payerName: details.payer.name.given_name + ' ' + details.payer.name.surname,
+            payerEmail: details.payer.email_address,
+            description: `${paymentDescription} payment via PayPal - Completed`,
+            metadata: {
+              paypalDetails: details,
+              captureId: details.purchase_units[0].payments.captures[0].id,
+              previousPendingId: pendingPaymentId
+            }
+          };
+
+          console.log('Creating completed payment record:', completedPaymentData);
+          const response = await api.createPayment(completedPaymentData);
+          
+          if (!response.success) {
+            throw new Error(response.message || 'Failed to save completed payment');
+          }
+
+          const newPayment = {
+            id: details.id,
+            date: new Date().toLocaleDateString(),
+            amount: parseFloat(paymentAmount),
+            method: 'PAYPAL',
+            description: paymentDescription,
+            status: 'Completed',
+            transactionId: details.id,
+            payer: details.payer.name.given_name + ' ' + details.payer.name.surname
+          };
+
+          setPaymentHistory([newPayment, ...paymentHistory]);
+          setPaymentAmount('');
+          setPaymentDescription('Tuition Fee');
+          setShowPayPalButtons(false);
+          setPendingPaymentId(null);
+          
+          alert(`✅ Payment Successful!\n\nTransaction ID: ${details.id}\nAmount: $${paymentAmount}\nThank you, ${details.payer.name.given_name}!\n\nYour payment has been recorded in the system.`);
+        } catch (error) {
+          console.error('Error updating payment:', error);
+          alert(`⚠️ Payment completed but there was an error recording it:\n${error.message}\n\nTransaction ID: ${details.id}\n\nPlease contact support with this transaction ID.`);
+          setShowPayPalButtons(false);
+          setPendingPaymentId(null);
+        }
+      }).catch((error) => {
+        console.error('PayPal capture error:', error);
+        alert('Failed to capture payment. Please try again.');
         setShowPayPalButtons(false);
-        
-        alert(`Payment Successful!\nTransaction ID: ${details.id}\nThank you, ${details.payer.name.given_name}!`);
       });
     };
 
-    const onError = (err) => {
+    const onError = async (err) => {
       console.error('PayPal Error:', err);
-      alert('Payment failed. Please try again.');
+      
+      // Update pending payment to failed
+      if (pendingPaymentId) {
+        try {
+          await api.updatePaymentStatus(pendingPaymentId, 'failed');
+          console.log('Payment status updated to failed');
+        } catch (updateError) {
+          console.error('Failed to update payment status:', updateError);
+        }
+      }
+      
+      alert('❌ Payment Error\n\nSomething went wrong with PayPal. Please try again or contact support if the problem persists.');
       setShowPayPalButtons(false);
+      setPendingPaymentId(null);
     };
 
-    const onCancel = () => {
-      alert('Payment cancelled.');
+    const onCancel = async () => {
+      console.log('Payment cancelled by user');
+      
+      // Update pending payment to cancelled
+      if (pendingPaymentId) {
+        try {
+          await api.updatePaymentStatus(pendingPaymentId, 'cancelled');
+          console.log('Payment status updated to cancelled');
+        } catch (updateError) {
+          console.error('Failed to update payment status:', updateError);
+        }
+      }
+      
+      alert('Payment was cancelled. No charges were made.');
       setShowPayPalButtons(false);
+      setPendingPaymentId(null);
     };
 
     return (
@@ -1456,6 +1634,23 @@ export default function StudentDashboard() {
             
             {!showPayPalButtons ? (
               <form onSubmit={handleProceedToPayment} style={{ marginTop: '20px' }}>
+                {pendingPaymentId && (
+                  <div style={{
+                    padding: '15px',
+                    background: '#fff7ed',
+                    border: '2px solid #fb923c',
+                    borderRadius: '8px',
+                    marginBottom: '20px'
+                  }}>
+                    <p style={{ margin: 0, fontWeight: 'bold', color: '#9a3412', fontSize: '14px' }}>
+                      ⏳ Payment Pending Admin Approval
+                    </p>
+                    <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#9a3412' }}>
+                      Your payment request has been submitted. Please wait for admin approval before the transaction is completed.
+                    </p>
+                  </div>
+                )}
+
                 <div style={{ marginBottom: '20px' }}>
                   <label className="small" style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>
                     Payment Description
@@ -1463,12 +1658,14 @@ export default function StudentDashboard() {
                   <select
                     value={paymentDescription}
                     onChange={(e) => setPaymentDescription(e.target.value)}
+                    disabled={pendingPaymentId}
                     style={{ 
                       width: '100%', 
                       padding: '10px', 
                       border: '1px solid #ddd', 
                       borderRadius: '5px',
-                      fontSize: '14px'
+                      fontSize: '14px',
+                      backgroundColor: pendingPaymentId ? '#f3f4f6' : 'white'
                     }}
                   >
                     <option value="Tuition Fee">Tuition Fee</option>
@@ -1491,12 +1688,14 @@ export default function StudentDashboard() {
                     placeholder="0.00"
                     required
                     min="0.01"
+                    disabled={pendingPaymentId}
                     style={{ 
                       width: '100%', 
                       padding: '10px', 
                       border: '1px solid #ddd', 
                       borderRadius: '5px',
-                      fontSize: '14px'
+                      fontSize: '14px',
+                      backgroundColor: pendingPaymentId ? '#f3f4f6' : 'white'
                     }}
                   />
                 </div>
@@ -1505,9 +1704,27 @@ export default function StudentDashboard() {
                   type="submit" 
                   className="btn-primary"
                   style={{ width: '100%' }}
+                  disabled={pendingPaymentId}
                 >
-                  🅿️ Proceed to PayPal
+                  {pendingPaymentId ? '⏳ Awaiting Approval...' : '📤 Submit Payment Request'}
                 </button>
+
+                {pendingPaymentId && (
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm('Are you sure you want to cancel this payment request?')) {
+                        setPendingPaymentId(null);
+                        setPaymentAmount('');
+                        setPaymentDescription('Tuition Fee');
+                      }
+                    }}
+                    className="btn-secondary"
+                    style={{ width: '100%', marginTop: '10px' }}
+                  >
+                    Cancel Request
+                  </button>
+                )}
               </form>
             ) : (
               <div style={{ marginTop: '20px' }}>
@@ -1529,15 +1746,24 @@ export default function StudentDashboard() {
                   onApprove={onApprove}
                   onError={onError}
                   onCancel={onCancel}
-                  style={{ layout: "vertical" }}
+                  style={{ 
+                    layout: "vertical",
+                    color: "blue",
+                    shape: "rect",
+                    label: "pay"
+                  }}
+                  forceReRender={[paymentAmount, paymentDescription]}
                 />
 
                 <button 
-                  onClick={() => setShowPayPalButtons(false)}
+                  onClick={() => {
+                    console.log('User clicked cancel button');
+                    setShowPayPalButtons(false);
+                  }}
                   className="btn-secondary"
                   style={{ width: '100%', marginTop: '15px' }}
                 >
-                  Cancel
+                  ← Back to Form
                 </button>
               </div>
             )}
@@ -1549,15 +1775,29 @@ export default function StudentDashboard() {
               borderRadius: '5px',
               border: '1px solid #fed7aa'
             }}>
-              <p className="small" style={{ margin: 0, color: '#92400e' }}>
-                <strong>ℹ️ Sandbox Mode:</strong> This is using PayPal Sandbox for testing. Use PayPal test credentials to complete payment.
+              <p className="small" style={{ margin: 0, color: '#92400e', lineHeight: '1.6' }}>
+                <strong>ℹ️ Sandbox Mode:</strong> This is using PayPal Sandbox for testing.<br/>
+                <strong>Test Credentials:</strong><br/>
+                • Email: sb-buyer@personal.example.com<br/>
+                • Password: testbuyer123<br/>
+                <br/>
+                Click the PayPal button above, login with test credentials, and complete the payment.
               </p>
             </div>
           </div>
 
         {/* Payment History */}
         <div className="card" style={{ marginTop: '20px' }}>
-          <h2>📜 Payment History</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <h2 style={{ margin: 0 }}>📜 Payment History</h2>
+            <button 
+              onClick={fetchPaymentHistory}
+              className="btn small ghost"
+              style={{ fontSize: '13px' }}
+            >
+              🔄 Refresh
+            </button>
+          </div>
           {paymentHistory.length === 0 ? (
             <p style={{ marginTop: '20px', color: '#666' }}>No payment history yet.</p>
           ) : (
@@ -1590,16 +1830,31 @@ export default function StudentDashboard() {
                         </span>
                       </td>
                       <td style={{ padding: '12px', textAlign: 'right', fontWeight: 'bold' }}>
-                        {payment.method === 'GCASH' ? '₱' : '$'}{payment.amount.toFixed(2)}
+                        {payment.currency === 'PHP' ? '₱' : '$'}{payment.amount.toFixed(2)}
                       </td>
                       <td style={{ padding: '12px', textAlign: 'center' }}>
                         <span style={{ 
                           padding: '4px 12px', 
-                          background: '#fef3c7',
-                          color: '#92400e',
+                          background: payment.status === 'completed' ? '#dcfce7' : 
+                                     payment.status === 'pending' ? '#fef3c7' :
+                                     payment.status === 'failed' ? '#fee2e2' :
+                                     payment.status === 'cancelled' ? '#f3f4f6' :
+                                     payment.status === 'refunded' ? '#e0e7ff' : '#fef3c7',
+                          color: payment.status === 'completed' ? '#166534' : 
+                                payment.status === 'pending' ? '#92400e' :
+                                payment.status === 'failed' ? '#991b1b' :
+                                payment.status === 'cancelled' ? '#374151' :
+                                payment.status === 'refunded' ? '#3730a3' : '#92400e',
                           borderRadius: '12px',
-                          fontSize: '12px'
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          textTransform: 'uppercase'
                         }}>
+                          {payment.status === 'pending' && '⏳ '}
+                          {payment.status === 'completed' && '✅ '}
+                          {payment.status === 'failed' && '❌ '}
+                          {payment.status === 'cancelled' && '🚫 '}
+                          {payment.status === 'refunded' && '💰 '}
                           {payment.status}
                         </span>
                       </td>

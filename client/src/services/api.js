@@ -589,6 +589,46 @@ class APIService {
   async testEmail(email) {
     return this.post('/email/test', { email });
   }
+
+  // =============== PAYMENT API ===============
+
+  // Create payment
+  async createPayment(paymentData) {
+    return this.post('/payments', paymentData);
+  }
+
+  // Get all payments (Admin)
+  async getAllPayments(filters = {}) {
+    const params = new URLSearchParams(filters).toString();
+    return this.get(`/payments${params ? `?${params}` : ''}`);
+  }
+
+  // Get payment by ID
+  async getPaymentById(id) {
+    return this.get(`/payments/${id}`);
+  }
+
+  // Get payments by student ID
+  async getPaymentsByStudent(studentId, filters = {}) {
+    const params = new URLSearchParams(filters).toString();
+    return this.get(`/payments/student/${studentId}${params ? `?${params}` : ''}`);
+  }
+
+  // Update payment status (Admin)
+  async updatePaymentStatus(id, status) {
+    return this.put(`/payments/${id}/status`, { status });
+  }
+
+  // Delete payment (Admin)
+  async deletePayment(id) {
+    return this.delete(`/payments/${id}`);
+  }
+
+  // Get payment statistics (Admin)
+  async getPaymentStats(filters = {}) {
+    const params = new URLSearchParams(filters).toString();
+    return this.get(`/payments/stats/summary${params ? `?${params}` : ''}`);
+  }
 }
 
 // Export singleton instance
