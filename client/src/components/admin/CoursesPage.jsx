@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../../services/api";
+import { logCourseAction, logAdminAction } from "../../utils/logActivity";
 
 export default function CoursesPage() {
   const [courses, setCourses] = useState([]);
@@ -105,6 +106,14 @@ export default function CoursesPage() {
 
       const response = await api.createCourse(courseData);
       if (response.success) {
+        // Log course creation
+        await logCourseAction(
+          `Created course ${courseCode}`,
+          'CREATE',
+          { _id: response.data._id, title: courseName },
+          `Created new course: ${courseName} (${courseCode})`
+        );
+        
         alert('Course created successfully!');
         resetCourseForm();
         fetchAllData();
@@ -132,6 +141,14 @@ export default function CoursesPage() {
 
       const response = await api.updateCourse(editingCourse._id, courseData);
       if (response.success) {
+        // Log course update
+        await logCourseAction(
+          `Updated course ${courseCode}`,
+          'UPDATE',
+          { _id: editingCourse._id, title: courseName },
+          `Updated course: ${courseName} (${courseCode})`
+        );
+        
         alert('Course updated successfully!');
         resetCourseForm();
         fetchAllData();
@@ -148,6 +165,14 @@ export default function CoursesPage() {
     try {
       const response = await api.deleteCourse(course._id);
       if (response.success) {
+        // Log course deletion
+        await logCourseAction(
+          `Deleted course ${course.courseCode}`,
+          'DELETE',
+          course,
+          `Deleted course: ${course.courseName} (${course.courseCode})`
+        );
+        
         alert('Course deleted successfully!');
         fetchAllData();
       }
@@ -263,6 +288,18 @@ export default function CoursesPage() {
 
       const response = await api.enrollStudent(enrollmentData);
       if (response.success) {
+        // Log enrollment
+        const student = students.find(s => s._id === enrollStudentId);
+        const course = courses.find(c => c._id === enrollCourseId);
+        await logAdminAction(
+          `Enrolled student in course`,
+          'CREATE',
+          'enrollment',
+          response.data._id,
+          `Enrolled ${student?.email || enrollStudentId} in ${course?.courseName || enrollCourseId}`,
+          { studentId: enrollStudentId, courseId: enrollCourseId, sectionId: enrollSectionId }
+        );
+        
         alert('Student enrolled successfully!');
         setShowEnrollmentForm(false);
         setEnrollStudentId("");
@@ -283,6 +320,17 @@ export default function CoursesPage() {
     try {
       const response = await api.deleteEnrollment(enrollmentId);
       if (response.success) {
+        // Log enrollment deletion
+        const enrollment = enrollments.find(e => e._id === enrollmentId);
+        await logAdminAction(
+          `Removed enrollment`,
+          'DELETE',
+          'enrollment',
+          enrollmentId,
+          `Removed enrollment for ${enrollment?.studentId || 'student'}`,
+          { enrollmentId }
+        );
+        
         alert('Enrollment removed successfully!');
         fetchAllData();
       }

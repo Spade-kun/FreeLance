@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import api from "../../services/api";
 import Modal from "../Modal/Modal";
+import { logPaymentAction } from "../../utils/logActivity";
 
 export default function PaymentsPage() {
   const [payments, setPayments] = useState([]);
@@ -94,7 +95,19 @@ export default function PaymentsPage() {
     }
 
     try {
+      const payment = payments.find(p => p._id === id);
       await api.deletePayment(id);
+      
+      // Log payment deletion
+      if (payment) {
+        await logPaymentAction(
+          `Deleted payment record`,
+          'DELETE',
+          payment,
+          `Deleted payment: $${payment.amount} from ${payment.studentEmail}`
+        );
+      }
+      
       setModal({ isOpen: true, title: 'Success', message: 'Payment deleted successfully', type: 'success' });
       fetchPayments();
       fetchStats();
@@ -105,7 +118,19 @@ export default function PaymentsPage() {
 
   const handleUpdateStatus = async (id, newStatus) => {
     try {
+      const payment = payments.find(p => p._id === id);
       await api.updatePaymentStatus(id, newStatus);
+      
+      // Log payment status update
+      if (payment) {
+        await logPaymentAction(
+          `Updated payment status to ${newStatus}`,
+          'UPDATE',
+          { ...payment, status: newStatus },
+          `Changed payment status to ${newStatus}: $${payment.amount} from ${payment.studentEmail}`
+        );
+      }
+      
       setModal({ isOpen: true, title: 'Success', message: 'Payment status updated successfully', type: 'success' });
       fetchPayments();
       fetchStats();
@@ -120,7 +145,19 @@ export default function PaymentsPage() {
     }
 
     try {
+      const payment = payments.find(p => p._id === id);
       await api.updatePaymentStatus(id, 'completed');
+      
+      // Log payment approval
+      if (payment) {
+        await logPaymentAction(
+          `Approved payment`,
+          'UPDATE',
+          { ...payment, status: 'completed' },
+          `Approved payment: $${payment.amount} from ${payment.studentEmail}`
+        );
+      }
+      
       setModal({ isOpen: true, title: 'Success', message: 'Payment approved successfully!', type: 'success' });
       fetchPayments();
       fetchStats();

@@ -629,6 +629,52 @@ class APIService {
     const params = new URLSearchParams(filters).toString();
     return this.get(`/payments/stats/summary${params ? `?${params}` : ''}`);
   }
+
+  // =============== LOGS API ===============
+
+  // Get all logs with filters
+  async getLogs(filters = {}) {
+    const params = new URLSearchParams(filters).toString();
+    return this.get(`/logs${params ? `?${params}` : ''}`);
+  }
+
+  // Get log by ID
+  async getLogById(id) {
+    return this.get(`/logs/${id}`);
+  }
+
+  // Get logs by user
+  async getLogsByUser(userId, filters = {}) {
+    const params = new URLSearchParams(filters).toString();
+    return this.get(`/logs/user/${userId}${params ? `?${params}` : ''}`);
+  }
+
+  // Get logs by action type
+  async getLogsByAction(actionType, filters = {}) {
+    const params = new URLSearchParams(filters).toString();
+    return this.get(`/logs/action/${actionType}${params ? `?${params}` : ''}`);
+  }
+
+  // Get log statistics
+  async getLogStats(filters = {}) {
+    const params = new URLSearchParams(filters).toString();
+    return this.get(`/logs/stats${params ? `?${params}` : ''}`);
+  }
+
+  // Delete a single log (Admin)
+  async deleteLog(id) {
+    return this.delete(`/logs/${id}`);
+  }
+
+  // Bulk delete logs (Admin)
+  async bulkDeleteLogs(data) {
+    return this.post('/logs/bulk-delete', data);
+  }
+
+  // Create log entry (usually done server-side, but available if needed)
+  async createLog(logData) {
+    return this.post('/logs', logData);
+  }
 }
 
 // Export singleton instance

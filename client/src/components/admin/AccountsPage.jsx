@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import api from "../../services/api";
 import { useRecaptcha } from "../../context/RecaptchaContext";
 import Modal from "../Modal/Modal";
+import { logUserAction } from "../../utils/logActivity";
 
 export default function AccountsPage() {
   const { getRecaptchaToken } = useRecaptcha();
@@ -137,6 +138,14 @@ export default function AccountsPage() {
       }
 
       if (response.success) {
+        // Log user creation
+        await logUserAction(
+          `Created ${role} account`,
+          'CREATE',
+          { email, role, _id: response.data._id },
+          `Created new ${role}: ${firstName} ${lastName}`
+        );
+        
         setModal({ 
           isOpen: true, 
           title: 'Success', 
@@ -189,6 +198,14 @@ export default function AccountsPage() {
       }
 
       if (response.success) {
+        // Log user update
+        await logUserAction(
+          `Updated ${editingUser.role} account`,
+          'UPDATE',
+          { email: userData.email, role: editingUser.role, _id: editingUser._id },
+          `Updated ${editingUser.role}: ${userData.firstName} ${userData.lastName}`
+        );
+        
         setModal({ isOpen: true, title: 'Success', message: 'User updated successfully!', type: 'success' });
         resetForm();
         fetchAllUsers();
@@ -215,6 +232,14 @@ export default function AccountsPage() {
       }
 
       if (response.success) {
+        // Log user deletion
+        await logUserAction(
+          `Deleted ${user.role} account`,
+          'DELETE',
+          user,
+          `Deleted ${user.role}: ${user.firstName} ${user.lastName} (${user.email})`
+        );
+        
         setModal({ isOpen: true, title: 'Success', message: 'User deleted successfully!', type: 'success' });
         fetchAllUsers();
       }

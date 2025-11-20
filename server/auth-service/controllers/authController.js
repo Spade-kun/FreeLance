@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import axios from 'axios';
 import User from '../models/User.js';
 import { sendEmail } from '../utils/emailService.js';
+import { logLogin, logLogout } from '../utils/logActivity.js';
 
 // User service URL
 const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:1003';
@@ -78,11 +79,24 @@ export const login = async (req, res) => {
     const user = await User.findOne({ email }).select('+password');
 
     if (!user) {
+      // Log failed login attempt
+      await logLogin(
+        { email, role: 'unknown', _id: null }, 
+        req.ip || req.connection.remoteAddress, 
+        req.get('user-agent'),
+        'failed'
+      );
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
     // Check if account is active
     if (!user.isActive) {
+      await logLogin(
+        user, 
+        req.ip || req.connection.remoteAddress, 
+        req.get('user-agent'),
+        'failed'
+      );
       return res.status(403).json({ message: 'Account is deactivated' });
     }
 
@@ -90,6 +104,12 @@ export const login = async (req, res) => {
     const isPasswordValid = await user.comparePassword(password);
 
     if (!isPasswordValid) {
+      await logLogin(
+        user, 
+        req.ip || req.connection.remoteAddress, 
+        req.get('user-agent'),
+        'failed'
+      );
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
@@ -130,6 +150,18 @@ export const login = async (req, res) => {
     user.lastLogin = Date.now();
     await user.save();
 
+    // Log successful login with full user info including name
+    const userWithName = {
+      ...user.toObject(),
+      name: userRoleInfo.name || userRoleInfo.firstName + ' ' + userRoleInfo.lastName || user.email
+    };
+    await logLogin(
+      userWithName, 
+      req.ip || req.connection.remoteAddress, 
+      req.get('user-agent'),
+      'success'
+    );
+
     res.status(200).json({
       success: true,
       message: 'Login successful',
@@ -161,6 +193,20 @@ export const logout = async (req, res) => {
       if (user) {
         user.refreshTokens = user.refreshTokens.filter(rt => rt.token !== refreshToken);
         await user.save();
+        
+        // Fetch user info with name from role collection
+        const userRoleInfo = await findUserRoleByEmail(user.email);
+        const userWithName = {
+          ...user.toObject(),
+          name: userRoleInfo?.name || (userRoleInfo?.firstName && userRoleInfo?.lastName ? userRoleInfo.firstName + ' ' + userRoleInfo.lastName : user.email)
+        };
+        
+        // Log logout activity
+        await logLogout(
+          userWithName, 
+          req.ip || req.connection.remoteAddress, 
+          req.get('user-agent')
+        );
       }
     }
 
@@ -449,6 +495,18 @@ export const googleCallback = async (req, res) => {
         authUser.lastLogin = Date.now();
         await authUser.save();
 
+        // Log successful Google OAuth login with full user info
+        const authUserWithName = {
+          ...authUser.toObject(),
+          name: userRoleInfo.name || (userRoleInfo.firstName && userRoleInfo.lastName ? userRoleInfo.firstName + ' ' + userRoleInfo.lastName : authUser.email)
+        };
+        await logLogin(
+          authUserWithName, 
+          req.ip || req.connection.remoteAddress, 
+          req.get('user-agent'),
+          'success'
+        );
+
         // Redirect to appropriate dashboard based on role
         const params = new URLSearchParams({
           accessToken,
@@ -475,6 +533,21 @@ export const googleCallback = async (req, res) => {
     user.refreshTokens.push({ token: refreshToken });
     user.lastLogin = Date.now();
     await user.save();
+
+    // Fetch user info with name from role collection
+    const existingUserRoleInfo = await findUserRoleByEmail(user.email);
+    const userWithName = {
+      ...user.toObject(),
+      name: existingUserRoleInfo?.name || (existingUserRoleInfo?.firstName && existingUserRoleInfo?.lastName ? existingUserRoleInfo.firstName + ' ' + existingUserRoleInfo.lastName : user.email)
+    };
+
+    // Log successful Google OAuth login
+    await logLogin(
+      userWithName, 
+      req.ip || req.connection.remoteAddress, 
+      req.get('user-agent'),
+      'success'
+    );
 
     // Redirect to frontend with tokens
     const params = new URLSearchParams({

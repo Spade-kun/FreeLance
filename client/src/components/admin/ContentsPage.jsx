@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../../services/api";
+import { logContentAction } from "../../utils/logActivity";
 
 export default function ContentsPage() {
   const [courses, setCourses] = useState([]);
@@ -126,6 +127,15 @@ export default function ContentsPage() {
 
       const response = await api.createAnnouncement(announcementData);
       if (response.success) {
+        // Log announcement creation
+        await logContentAction(
+          `Created announcement`,
+          'CREATE',
+          { _id: response.data._id, title: annTitle },
+          'announcement',
+          `Created new announcement: ${annTitle}`
+        );
+        
         alert('Announcement created successfully!');
         resetAnnouncementForm();
         fetchAllData();
@@ -152,6 +162,15 @@ export default function ContentsPage() {
 
       const response = await api.updateAnnouncement(editingAnnouncement._id, announcementData);
       if (response.success) {
+        // Log announcement update
+        await logContentAction(
+          `Updated announcement`,
+          'UPDATE',
+          { _id: editingAnnouncement._id, title: annTitle },
+          'announcement',
+          `Updated announcement: ${annTitle}`
+        );
+        
         alert('Announcement updated successfully!');
         resetAnnouncementForm();
         fetchAllData();
@@ -168,6 +187,16 @@ export default function ContentsPage() {
     try {
       const response = await api.deleteAnnouncement(id);
       if (response.success) {
+        // Log announcement deletion
+        const announcement = announcements.find(a => a._id === id);
+        await logContentAction(
+          `Deleted announcement`,
+          'DELETE',
+          { _id: id, title: announcement?.title || 'Unknown' },
+          'announcement',
+          `Deleted announcement: ${announcement?.title || id}`
+        );
+        
         alert('Announcement deleted successfully!');
         fetchAllData();
       }
@@ -212,6 +241,15 @@ export default function ContentsPage() {
 
       const response = await api.createModule(moduleData);
       if (response.success) {
+        // Log module creation
+        await logContentAction(
+          `Created module`,
+          'CREATE',
+          { _id: response.data._id, title: modTitle },
+          'module',
+          `Created module: ${modTitle}`
+        );
+        
         alert('Module created successfully!');
         resetModuleForm();
         fetchAllData();

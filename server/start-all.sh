@@ -15,6 +15,7 @@ declare -a services=(
     "report-service:1007"
     "email-service:1008"
     "payment-service:1009"
+    "logs-service:1010"
 )
 
 # Function to start a service in background

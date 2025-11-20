@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../../services/api";
+import { logReportAction } from "../../utils/logActivity";
 
 export default function ReportsPage() {
   const [enrollments, setEnrollments] = useState([]);

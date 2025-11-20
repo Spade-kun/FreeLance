@@ -1,4 +1,5 @@
 import Payment from '../models/Payment.js';
+import { logPayment } from '../utils/logActivity.js';
 
 // @desc    Create new payment
 // @route   POST /api/payments
@@ -56,6 +57,25 @@ export const createPayment = async (req, res) => {
       metadata,
       paymentDate: new Date()
     });
+
+    // Log payment activity
+    await logPayment(
+      {
+        userId: studentId,
+        userEmail: studentEmail,
+        userName: studentName,
+        userRole: 'student'
+      },
+      {
+        paymentId: payment._id,
+        amount: payment.amount,
+        currency: payment.currency,
+        courseName: description || paymentType,
+        paymentMethod: payment.paymentMethod,
+        courseId: metadata?.courseId
+      },
+      payment.status === 'completed' ? 'success' : 'pending'
+    );
 
     res.status(201).json({ 
       success: true, 
