@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import api from "../../services/api";
 import { logReportAction } from "../../utils/logActivity";
+import Modal from "../Modal/Modal";
 
 export default function ReportsPage() {
   const [enrollments, setEnrollments] = useState([]);
@@ -11,6 +12,7 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('enrollments'); // enrollments, students, courses, instructors
+  const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'success' });
 
   useEffect(() => {
     fetchAllData();
@@ -67,7 +69,7 @@ export default function ReportsPage() {
 
   const exportEnrollmentsCsv = () => {
     if (enrollments.length === 0) {
-      alert("No enrollments to export.");
+      setModal({ isOpen: true, title: 'No Data', message: 'No enrollments to export.', type: 'error' });
       return;
     }
 
@@ -75,8 +77,15 @@ export default function ReportsPage() {
       ["Student ID", "Student Name", "Email", "Course Code", "Course Name", "Section", "Enrollment Date", "Status"],
       ...enrollments.map(e => {
         const student = students.find(s => s._id === e.studentId);
-        const course = courses.find(c => c._id === e.courseId);
-        const section = sections[e.courseId]?.find(s => s._id === e.sectionId);
+        
+        // Handle both populated and non-populated data
+        const course = typeof e.courseId === 'object' && e.courseId !== null 
+          ? e.courseId 
+          : courses.find(c => c._id === e.courseId);
+        
+        const section = typeof e.sectionId === 'object' && e.sectionId !== null
+          ? e.sectionId
+          : sections[e.courseId]?.find(s => s._id === e.sectionId);
         
         return [
           e.studentId,
@@ -267,9 +276,18 @@ export default function ReportsPage() {
                   </tr>
                 ) : (
                   enrollments.map(enrollment => {
+                    // Handle both populated and non-populated enrollment data
                     const student = students.find(s => s._id === enrollment.studentId);
-                    const course = courses.find(c => c._id === enrollment.courseId);
-                    const section = sections[enrollment.courseId]?.find(s => s._id === enrollment.sectionId);
+                    
+                    // Check if courseId is populated (object) or just an ID (string)
+                    const course = typeof enrollment.courseId === 'object' && enrollment.courseId !== null 
+                      ? enrollment.courseId 
+                      : courses.find(c => c._id === enrollment.courseId);
+                    
+                    // Check if sectionId is populated (object) or just an ID (string)
+                    const section = typeof enrollment.sectionId === 'object' && enrollment.sectionId !== null
+                      ? enrollment.sectionId
+                      : sections[enrollment.courseId]?.find(s => s._id === enrollment.sectionId);
 
                     return (
                       <tr key={enrollment._id}>
@@ -506,6 +524,15 @@ export default function ReportsPage() {
           </div>
         </>
       )}
+
+      {/* Modal for messages */}
+      <Modal 
+        isOpen={modal.isOpen}
+        onClose={() => setModal({ isOpen: false, title: '', message: '', type: 'success' })}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+      />
     </div>
   );
 }

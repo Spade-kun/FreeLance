@@ -1,5 +1,6 @@
 import Payment from '../models/Payment.js';
 import { logPayment } from '../utils/logActivity.js';
+import { encryptPaymentData, decryptPaymentData, decryptPaymentArray } from '../utils/encryption.js';
 
 // @desc    Create new payment
 // @route   POST /api/payments
@@ -30,8 +31,16 @@ export const createPayment = async (req, res) => {
       });
     }
 
-    // Check if transaction ID already exists
-    const existingPayment = await Payment.findOne({ transactionId });
+    // Encrypt sensitive payment data before checking and saving
+    const encryptedData = encryptPaymentData({
+      transactionId,
+      paypalOrderId,
+      payerEmail,
+      studentEmail
+    });
+
+    // Check if transaction ID already exists (comparing encrypted values)
+    const existingPayment = await Payment.findOne({ transactionId: encryptedData.transactionId });
     if (existingPayment) {
       return res.status(400).json({ 
         success: false,
@@ -39,20 +48,20 @@ export const createPayment = async (req, res) => {
       });
     }
 
-    // Create payment with status from request or default to 'pending'
+    // Create payment with encrypted data
     const payment = await Payment.create({
       studentId,
       studentName,
-      studentEmail,
+      studentEmail: encryptedData.studentEmail,
       amount,
       currency: currency || 'USD',
       paymentType,
       paymentMethod: paymentMethod || 'PAYPAL',
       status: req.body.status || 'pending', // Default to pending, can be overridden
-      transactionId,
-      paypalOrderId,
+      transactionId: encryptedData.transactionId,
+      paypalOrderId: encryptedData.paypalOrderId,
       payerName,
-      payerEmail,
+      payerEmail: encryptedData.payerEmail,
       description,
       metadata,
       paymentDate: new Date()
@@ -77,9 +86,12 @@ export const createPayment = async (req, res) => {
       payment.status === 'completed' ? 'success' : 'pending'
     );
 
+    // Decrypt payment data before sending response
+    const decryptedPayment = decryptPaymentData(payment.toObject());
+
     res.status(201).json({ 
       success: true, 
-      data: payment,
+      data: decryptedPayment,
       message: 'Payment recorded successfully'
     });
   } catch (error) {
@@ -129,6 +141,9 @@ export const getAllPayments = async (req, res) => {
       .skip(skip)
       .limit(parseInt(limit));
 
+    // Decrypt payment data before sending
+    const decryptedPayments = decryptPaymentArray(payments);
+
     // Get total count
     const total = await Payment.countDocuments(filter);
 
@@ -147,7 +162,7 @@ export const getAllPayments = async (req, res) => {
 
     res.status(200).json({ 
       success: true, 
-      data: payments,
+      data: decryptedPayments,
       pagination: {
         currentPage: parseInt(page),
         totalPages: Math.ceil(total / parseInt(limit)),
@@ -179,9 +194,12 @@ export const getPaymentById = async (req, res) => {
       });
     }
 
+    // Decrypt payment data before sending response
+    const decryptedPayment = decryptPaymentData(payment.toObject());
+
     res.status(200).json({ 
       success: true, 
-      data: payment 
+      data: decryptedPayment 
     });
   } catch (error) {
     console.error('Get payment by ID error:', error);
@@ -208,6 +226,9 @@ export const getPaymentsByStudent = async (req, res) => {
     const payments = await Payment.find(filter)
       .sort({ [sortBy]: sortOrder });
 
+    // Decrypt payment data before sending
+    const decryptedPayments = decryptPaymentArray(payments);
+
     // Calculate student's total paid
     const totalPaid = payments
       .filter(p => p.status === 'completed')
@@ -215,7 +236,7 @@ export const getPaymentsByStudent = async (req, res) => {
 
     res.status(200).json({ 
       success: true, 
-      data: payments,
+      data: decryptedPayments,
       summary: {
         totalPayments: payments.length,
         totalPaid: totalPaid,
@@ -259,9 +280,12 @@ export const updatePaymentStatus = async (req, res) => {
       });
     }
 
+    // Decrypt payment data before sending response
+    const decryptedPayment = decryptPaymentData(payment.toObject());
+
     res.status(200).json({ 
       success: true, 
-      data: payment,
+      data: decryptedPayment,
       message: 'Payment status updated successfully'
     });
   } catch (error) {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import api from "../../services/api";
 import Modal from "../Modal/Modal";
+import ConfirmModal from "../Modal/ConfirmModal";
 import { logPaymentAction } from "../../utils/logActivity";
 
 export default function PaymentsPage() {
@@ -9,6 +10,7 @@ export default function PaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'success' });
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
   const [filter, setFilter] = useState({
     status: '',
     paymentType: '',
@@ -90,30 +92,33 @@ export default function PaymentsPage() {
   };
 
   const handleDeletePayment = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this payment record?')) {
-      return;
-    }
-
-    try {
-      const payment = payments.find(p => p._id === id);
-      await api.deletePayment(id);
-      
-      // Log payment deletion
-      if (payment) {
-        await logPaymentAction(
-          `Deleted payment record`,
-          'DELETE',
-          payment,
-          `Deleted payment: $${payment.amount} from ${payment.studentEmail}`
-        );
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Payment',
+      message: 'Are you sure you want to delete this payment record?',
+      onConfirm: async () => {
+        try {
+          const payment = payments.find(p => p._id === id);
+          await api.deletePayment(id);
+          
+          // Log payment deletion
+          if (payment) {
+            await logPaymentAction(
+              `Deleted payment record`,
+              'DELETE',
+              payment,
+              `Deleted payment: $${payment.amount} from ${payment.studentEmail}`
+            );
+          }
+          
+          setModal({ isOpen: true, title: 'Success', message: 'Payment deleted successfully', type: 'success' });
+          fetchPayments();
+          fetchStats();
+        } catch (err) {
+          setModal({ isOpen: true, title: 'Error', message: 'Error deleting payment: ' + err.message, type: 'error' });
+        }
       }
-      
-      setModal({ isOpen: true, title: 'Success', message: 'Payment deleted successfully', type: 'success' });
-      fetchPayments();
-      fetchStats();
-    } catch (err) {
-      setModal({ isOpen: true, title: 'Error', message: 'Error deleting payment: ' + err.message, type: 'error' });
-    }
+    });
   };
 
   const handleUpdateStatus = async (id, newStatus) => {
@@ -140,30 +145,33 @@ export default function PaymentsPage() {
   };
 
   const handleApprovePayment = async (id) => {
-    if (!window.confirm('Are you sure you want to approve this payment?')) {
-      return;
-    }
-
-    try {
-      const payment = payments.find(p => p._id === id);
-      await api.updatePaymentStatus(id, 'completed');
-      
-      // Log payment approval
-      if (payment) {
-        await logPaymentAction(
-          `Approved payment`,
-          'UPDATE',
-          { ...payment, status: 'completed' },
-          `Approved payment: $${payment.amount} from ${payment.studentEmail}`
-        );
+    setConfirmModal({
+      isOpen: true,
+      title: 'Approve Payment',
+      message: 'Are you sure you want to approve this payment?',
+      onConfirm: async () => {
+        try {
+          const payment = payments.find(p => p._id === id);
+          await api.updatePaymentStatus(id, 'completed');
+          
+          // Log payment approval
+          if (payment) {
+            await logPaymentAction(
+              `Approved payment`,
+              'UPDATE',
+              { ...payment, status: 'completed' },
+              `Approved payment: $${payment.amount} from ${payment.studentEmail}`
+            );
+          }
+          
+          setModal({ isOpen: true, title: 'Success', message: 'Payment approved successfully!', type: 'success' });
+          fetchPayments();
+          fetchStats();
+        } catch (err) {
+          setModal({ isOpen: true, title: 'Error', message: 'Error approving payment: ' + err.message, type: 'error' });
+        }
       }
-      
-      setModal({ isOpen: true, title: 'Success', message: 'Payment approved successfully!', type: 'success' });
-      fetchPayments();
-      fetchStats();
-    } catch (err) {
-      setModal({ isOpen: true, title: 'Error', message: 'Error approving payment: ' + err.message, type: 'error' });
-    }
+    });
   };
 
   const formatDate = (dateString) => {
@@ -383,7 +391,7 @@ export default function PaymentsPage() {
                       <td style={{ padding: '12px 8px', fontSize: '13px' }}>
                         <div>
                           <div style={{ fontWeight: '600' }}>{payment.studentName}</div>
-                          <div className="muted small">{payment.studentEmail}</div>
+                          {/* <div className="muted small">{payment.studentEmail}</div> */}
                         </div>
                       </td>
                       <td style={{ padding: '12px 8px', fontSize: '13px' }}>{payment.paymentType}</td>
@@ -481,6 +489,14 @@ export default function PaymentsPage() {
         title={modal.title}
         message={modal.message}
         type={modal.type}
+      />
+
+      <ConfirmModal 
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: null })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
       />
     </div>
   );

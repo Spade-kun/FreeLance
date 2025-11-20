@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import api from "../../services/api";
 import { useRecaptcha } from "../../context/RecaptchaContext";
 import Modal from "../Modal/Modal";
+import ConfirmModal from "../Modal/ConfirmModal";
 import { logUserAction } from "../../utils/logActivity";
 
 export default function AccountsPage() {
@@ -11,6 +12,7 @@ export default function AccountsPage() {
   const [error, setError] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
   const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'success' });
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
   
   // Form states
   const [firstName, setFirstName] = useState("");
@@ -219,34 +221,39 @@ export default function AccountsPage() {
   };
 
   const deleteUser = async (user) => {
-    if (!confirm(`Delete ${user.firstName} ${user.lastName}?`)) return;
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete User',
+      message: `Delete ${user.firstName} ${user.lastName}?`,
+      onConfirm: async () => {
+        try {
+          let response;
+          if (user.role === 'student') {
+            response = await api.deleteStudent(user._id);
+          } else if (user.role === 'instructor') {
+            response = await api.deleteInstructor(user._id);
+          } else if (user.role === 'admin') {
+            response = await api.deleteAdmin(user._id);
+          }
 
-    try {
-      let response;
-      if (user.role === 'student') {
-        response = await api.deleteStudent(user._id);
-      } else if (user.role === 'instructor') {
-        response = await api.deleteInstructor(user._id);
-      } else if (user.role === 'admin') {
-        response = await api.deleteAdmin(user._id);
+          if (response.success) {
+            // Log user deletion
+            await logUserAction(
+              `Deleted ${user.role} account`,
+              'DELETE',
+              user,
+              `Deleted ${user.role}: ${user.firstName} ${user.lastName} (${user.email})`
+            );
+            
+            setModal({ isOpen: true, title: 'Success', message: 'User deleted successfully!', type: 'success' });
+            fetchAllUsers();
+          }
+        } catch (err) {
+          console.error('Error deleting user:', err);
+          setModal({ isOpen: true, title: 'Error', message: err.message || 'Failed to delete user', type: 'error' });
+        }
       }
-
-      if (response.success) {
-        // Log user deletion
-        await logUserAction(
-          `Deleted ${user.role} account`,
-          'DELETE',
-          user,
-          `Deleted ${user.role}: ${user.firstName} ${user.lastName} (${user.email})`
-        );
-        
-        setModal({ isOpen: true, title: 'Success', message: 'User deleted successfully!', type: 'success' });
-        fetchAllUsers();
-      }
-    } catch (err) {
-      console.error('Error deleting user:', err);
-      setModal({ isOpen: true, title: 'Error', message: err.message || 'Failed to delete user', type: 'error' });
-    }
+    });
   };
 
   const startEdit = (user) => {
@@ -603,6 +610,14 @@ export default function AccountsPage() {
         title={modal.title}
         message={modal.message}
         type={modal.type}
+      />
+
+      <ConfirmModal 
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: null })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
       />
     </div>
   );

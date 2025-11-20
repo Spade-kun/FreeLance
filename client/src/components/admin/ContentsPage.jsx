@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import api from "../../services/api";
 import { logContentAction } from "../../utils/logActivity";
+import Modal from "../Modal/Modal";
+import ConfirmModal from "../Modal/ConfirmModal";
 
 export default function ContentsPage() {
   const [courses, setCourses] = useState([]);
@@ -34,6 +36,10 @@ export default function ContentsPage() {
   const [lessonContent, setLessonContent] = useState("");
   const [lessonContentType, setLessonContentType] = useState("text");
   const [lessonOrder, setLessonOrder] = useState("");
+
+  // Modal states
+  const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'success' });
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
 
   useEffect(() => {
     fetchAllData();
@@ -100,7 +106,8 @@ export default function ContentsPage() {
   // ========== ANNOUNCEMENTS ==========
   const addAnnouncement = async () => {
     if (!annTitle.trim() || !annContent.trim()) {
-      return alert("Please fill in title and content.");
+      setModal({ isOpen: true, title: 'Validation Error', message: 'Please fill in title and content.', type: 'error' });
+      return;
     }
 
     try {
@@ -111,7 +118,8 @@ export default function ContentsPage() {
       
       if (!authorId || !user.role) {
         console.error('User data:', user);
-        return alert("User information not found. Please log in again.");
+        setModal({ isOpen: true, title: 'Error', message: 'User information not found. Please log in again.', type: 'error' });
+        return;
       }
 
       const announcementData = {
@@ -127,28 +135,20 @@ export default function ContentsPage() {
 
       const response = await api.createAnnouncement(announcementData);
       if (response.success) {
-        // Log announcement creation
-        await logContentAction(
-          `Created announcement`,
-          'CREATE',
-          { _id: response.data._id, title: annTitle },
-          'announcement',
-          `Created new announcement: ${annTitle}`
-        );
-        
-        alert('Announcement created successfully!');
+        setModal({ isOpen: true, title: 'Success', message: 'Announcement created successfully!', type: 'success' });
         resetAnnouncementForm();
         fetchAllData();
       }
     } catch (err) {
       console.error('Error creating announcement:', err);
-      alert(err.message || 'Failed to create announcement');
+      setModal({ isOpen: true, title: 'Error', message: err.message || 'Failed to create announcement', type: 'error' });
     }
   };
 
   const updateAnnouncement = async () => {
     if (!editingAnnouncement || !annTitle.trim() || !annContent.trim()) {
-      return alert("Please fill in required fields.");
+      setModal({ isOpen: true, title: 'Validation Error', message: 'Please fill in required fields.', type: 'error' });
+      return;
     }
 
     try {
@@ -171,39 +171,44 @@ export default function ContentsPage() {
           `Updated announcement: ${annTitle}`
         );
         
-        alert('Announcement updated successfully!');
+        setModal({ isOpen: true, title: 'Success', message: 'Announcement updated successfully!', type: 'success' });
         resetAnnouncementForm();
         fetchAllData();
       }
     } catch (err) {
       console.error('Error updating announcement:', err);
-      alert(err.message || 'Failed to update announcement');
+      setModal({ isOpen: true, title: 'Error', message: err.message || 'Failed to update announcement', type: 'error' });
     }
   };
 
   const deleteAnnouncement = async (id) => {
-    if (!confirm("Delete this announcement?")) return;
-
-    try {
-      const response = await api.deleteAnnouncement(id);
-      if (response.success) {
-        // Log announcement deletion
-        const announcement = announcements.find(a => a._id === id);
-        await logContentAction(
-          `Deleted announcement`,
-          'DELETE',
-          { _id: id, title: announcement?.title || 'Unknown' },
-          'announcement',
-          `Deleted announcement: ${announcement?.title || id}`
-        );
-        
-        alert('Announcement deleted successfully!');
-        fetchAllData();
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Announcement',
+      message: 'Delete this announcement?',
+      onConfirm: async () => {
+        try {
+          const response = await api.deleteAnnouncement(id);
+          if (response.success) {
+            // Log announcement deletion
+            const announcement = announcements.find(a => a._id === id);
+            await logContentAction(
+              `Deleted announcement`,
+              'DELETE',
+              { _id: id, title: announcement?.title || 'Unknown' },
+              'announcement',
+              `Deleted announcement: ${announcement?.title || id}`
+            );
+            
+            setModal({ isOpen: true, title: 'Success', message: 'Announcement deleted successfully!', type: 'success' });
+            fetchAllData();
+          }
+        } catch (err) {
+          console.error('Error deleting announcement:', err);
+          setModal({ isOpen: true, title: 'Error', message: err.message || 'Failed to delete announcement', type: 'error' });
+        }
       }
-    } catch (err) {
-      console.error('Error deleting announcement:', err);
-      alert(err.message || 'Failed to delete announcement');
-    }
+    });
   };
 
   const startEditAnnouncement = (announcement) => {
@@ -227,7 +232,8 @@ export default function ContentsPage() {
   // ========== MODULES ==========
   const addModule = async () => {
     if (!modTitle.trim() || !modCourseId) {
-      return alert("Please fill in title and select a course.");
+      setModal({ isOpen: true, title: 'Validation Error', message: 'Please fill in title and select a course.', type: 'error' });
+      return;
     }
 
     try {
@@ -250,19 +256,20 @@ export default function ContentsPage() {
           `Created module: ${modTitle}`
         );
         
-        alert('Module created successfully!');
+        setModal({ isOpen: true, title: 'Success', message: 'Module created successfully!', type: 'success' });
         resetModuleForm();
         fetchAllData();
       }
     } catch (err) {
       console.error('Error creating module:', err);
-      alert(err.message || 'Failed to create module');
+      setModal({ isOpen: true, title: 'Error', message: err.message || 'Failed to create module', type: 'error' });
     }
   };
 
   const updateModule = async () => {
     if (!editingModule || !modTitle.trim() || !modCourseId) {
-      return alert("Please fill in required fields.");
+      setModal({ isOpen: true, title: 'Validation Error', message: 'Please fill in required fields.', type: 'error' });
+      return;
     }
 
     try {
@@ -275,29 +282,34 @@ export default function ContentsPage() {
 
       const response = await api.updateModule(editingModule._id, moduleData);
       if (response.success) {
-        alert('Module updated successfully!');
+        setModal({ isOpen: true, title: 'Success', message: 'Module updated successfully!', type: 'success' });
         resetModuleForm();
         fetchAllData();
       }
     } catch (err) {
       console.error('Error updating module:', err);
-      alert(err.message || 'Failed to update module');
+      setModal({ isOpen: true, title: 'Error', message: err.message || 'Failed to update module', type: 'error' });
     }
   };
 
   const deleteModule = async (id) => {
-    if (!confirm("Delete this module?")) return;
-
-    try {
-      const response = await api.deleteModule(id);
-      if (response.success) {
-        alert('Module deleted successfully!');
-        fetchAllData();
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Module',
+      message: 'Delete this module?',
+      onConfirm: async () => {
+        try {
+          const response = await api.deleteModule(id);
+          if (response.success) {
+            setModal({ isOpen: true, title: 'Success', message: 'Module deleted successfully!', type: 'success' });
+            fetchAllData();
+          }
+        } catch (err) {
+          console.error('Error deleting module:', err);
+          setModal({ isOpen: true, title: 'Error', message: err.message || 'Failed to delete module', type: 'error' });
+        }
       }
-    } catch (err) {
-      console.error('Error deleting module:', err);
-      alert(err.message || 'Failed to delete module');
-    }
+    });
   };
 
   const startEditModule = (module) => {
@@ -329,7 +341,8 @@ export default function ContentsPage() {
 
   const addLesson = async () => {
     if (!lessonTitle.trim() || !selectedModuleForLesson) {
-      return alert("Please fill in lesson title.");
+      setModal({ isOpen: true, title: 'Validation Error', message: 'Please fill in lesson title.', type: 'error' });
+      return;
     }
 
     try {
@@ -345,29 +358,34 @@ export default function ContentsPage() {
 
       const response = await api.createLesson(lessonData);
       if (response.success) {
-        alert('Lesson created successfully!');
+        setModal({ isOpen: true, title: 'Success', message: 'Lesson created successfully!', type: 'success' });
         setShowLessonForm(false);
         fetchAllData();
       }
     } catch (err) {
       console.error('Error creating lesson:', err);
-      alert(err.message || 'Failed to create lesson');
+      setModal({ isOpen: true, title: 'Error', message: err.message || 'Failed to create lesson', type: 'error' });
     }
   };
 
   const deleteLesson = async (lessonId) => {
-    if (!confirm("Delete this lesson?")) return;
-
-    try {
-      const response = await api.deleteLesson(lessonId);
-      if (response.success) {
-        alert('Lesson deleted successfully!');
-        fetchAllData();
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Lesson',
+      message: 'Delete this lesson?',
+      onConfirm: async () => {
+        try {
+          const response = await api.deleteLesson(lessonId);
+          if (response.success) {
+            setModal({ isOpen: true, title: 'Success', message: 'Lesson deleted successfully!', type: 'success' });
+            fetchAllData();
+          }
+        } catch (err) {
+          console.error('Error deleting lesson:', err);
+          setModal({ isOpen: true, title: 'Error', message: err.message || 'Failed to delete lesson', type: 'error' });
+        }
       }
-    } catch (err) {
-      console.error('Error deleting lesson:', err);
-      alert(err.message || 'Failed to delete lesson');
-    }
+    });
   };
 
   if (loading) {
@@ -767,6 +785,24 @@ export default function ContentsPage() {
           )}
         </>
       )}
+
+      {/* Modal for messages */}
+      <Modal 
+        isOpen={modal.isOpen}
+        onClose={() => setModal({ isOpen: false, title: '', message: '', type: 'success' })}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+      />
+
+      {/* ConfirmModal for confirmations */}
+      <ConfirmModal 
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: null })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+      />
     </div>
   );
 }

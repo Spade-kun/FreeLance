@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import api from "../../services/api";
 import Modal from "../Modal/Modal";
 import ConfirmModal from "../Modal/ConfirmModal";
+import AnnouncementCard from "../common/AnnouncementCard";
 import "./instructor.css";
 
 export default function InstructorDashboard() {
@@ -298,6 +299,12 @@ export default function InstructorDashboard() {
           <h2>Welcome, {currentUser?.email || 'Instructor'} 👋</h2>
           <p className="muted small">Here's an overview of your teaching activities</p>
         </div>
+
+        {/* Announcements */}
+        <AnnouncementCard 
+          userRole="instructor" 
+          userEnrollments={instructorCourses.map(c => ({ courseId: c._id, _id: c._id }))}
+        />
 
         {/* Statistics Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
@@ -624,7 +631,7 @@ export default function InstructorDashboard() {
       setLoading(false);
     } catch (err) {
       console.error('Error fetching sections:', err);
-      alert('Failed to load course sections');
+      setModal({ isOpen: true, title: 'Error', message: 'Failed to load course sections', type: 'error' });
       setLoading(false);
     }
   };
@@ -748,7 +755,7 @@ export default function InstructorDashboard() {
       setLoading(false);
     } catch (err) {
       console.error('Error fetching modules:', err);
-      alert('Failed to load modules');
+      setModal({ isOpen: true, title: 'Error', message: 'Failed to load modules', type: 'error' });
       setLoading(false);
     }
   };
@@ -761,7 +768,7 @@ export default function InstructorDashboard() {
       setLoading(false);
     } catch (err) {
       console.error('Error fetching lessons:', err);
-      alert('Failed to load lessons');
+      setModal({ isOpen: true, title: 'Error', message: 'Failed to load lessons', type: 'error' });
       setLoading(false);
     }
   };
@@ -794,18 +801,21 @@ export default function InstructorDashboard() {
 
   const validateModuleForm = () => {
     if (!moduleTitle.trim()) {
-      alert("Module title is required!");
+      setModal({ isOpen: true, title: 'Validation Error', message: 'Module title is required!', type: 'error' });
       return false;
     }
     if (!moduleOrder.trim() || isNaN(moduleOrder)) {
-      alert("Please enter a valid module order number!");
+      setModal({ isOpen: true, title: 'Validation Error', message: 'Please enter a valid module order number!', type: 'error' });
       return false;
     }
     return true;
   };
 
   const addModule = async () => {
-    if (!selectedCourse) return alert('No course selected');
+    if (!selectedCourse) {
+      setModal({ isOpen: true, title: 'Error', message: 'No course selected', type: 'error' });
+      return;
+    }
     if (!validateModuleForm()) return;
 
     try {
@@ -852,18 +862,23 @@ export default function InstructorDashboard() {
   };
 
   const deleteModule = async (moduleId) => {
-    if (!confirm('Delete this module? This will also delete all lessons in this module.')) return;
-    
-    try {
-      setLoading(true);
-      await api.deleteModule(moduleId);
-      setModal({ isOpen: true, title: 'Success', message: 'Module deleted successfully!', type: 'success' });
-      await fetchModules(selectedCourse._id);
-    } catch (err) {
-      console.error('Error deleting module:', err);
-      setModal({ isOpen: true, title: 'Error', message: 'Failed to delete module: ' + err.message, type: 'error' });
-      setLoading(false);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Module',
+      message: 'Delete this module? This will also delete all lessons in this module.',
+      onConfirm: async () => {
+        try {
+          setLoading(true);
+          await api.deleteModule(moduleId);
+          setModal({ isOpen: true, title: 'Success', message: 'Module deleted successfully!', type: 'success' });
+          await fetchModules(selectedCourse._id);
+        } catch (err) {
+          console.error('Error deleting module:', err);
+          setModal({ isOpen: true, title: 'Error', message: 'Failed to delete module: ' + err.message, type: 'error' });
+          setLoading(false);
+        }
+      }
+    });
   };
 
   const resetLessonForm = () => {
@@ -899,22 +914,25 @@ export default function InstructorDashboard() {
 
   const validateLessonForm = () => {
     if (!lessonTitle.trim()) {
-      alert("Lesson title is required!");
+      setModal({ isOpen: true, title: 'Validation Error', message: 'Lesson title is required!', type: 'error' });
       return false;
     }
     if (!lessonOrder.trim() || isNaN(lessonOrder)) {
-      alert("Please enter a valid lesson order number!");
+      setModal({ isOpen: true, title: 'Validation Error', message: 'Please enter a valid lesson order number!', type: 'error' });
       return false;
     }
     if (!lessonType) {
-      alert("Please select a lesson type!");
+      setModal({ isOpen: true, title: 'Validation Error', message: 'Please select a lesson type!', type: 'error' });
       return false;
     }
     return true;
   };
 
   const addLesson = async () => {
-    if (!selectedModule) return alert('No module selected');
+    if (!selectedModule) {
+      setModal({ isOpen: true, title: 'Error', message: 'No module selected', type: 'error' });
+      return;
+    }
     if (!validateLessonForm()) return;
 
     try {
@@ -963,18 +981,23 @@ export default function InstructorDashboard() {
   };
 
   const deleteLesson = async (lessonId) => {
-    if (!confirm('Delete this lesson?')) return;
-    
-    try {
-      setLoading(true);
-      await api.deleteLesson(lessonId);
-      setModal({ isOpen: true, title: 'Success', message: 'Lesson deleted successfully!', type: 'success' });
-      await fetchLessons(selectedModule._id);
-    } catch (err) {
-      console.error('Error deleting lesson:', err);
-      setModal({ isOpen: true, title: 'Error', message: 'Failed to delete lesson: ' + err.message, type: 'error' });
-      setLoading(false);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Lesson',
+      message: 'Are you sure you want to delete this lesson?',
+      onConfirm: async () => {
+        try {
+          setLoading(true);
+          await api.deleteLesson(lessonId);
+          setModal({ isOpen: true, title: 'Success', message: 'Lesson deleted successfully!', type: 'success' });
+          await fetchLessons(selectedModule._id);
+        } catch (err) {
+          console.error('Error deleting lesson:', err);
+          setModal({ isOpen: true, title: 'Error', message: 'Failed to delete lesson: ' + err.message, type: 'error' });
+          setLoading(false);
+        }
+      }
+    });
   };
 
   const renderMaterials = () => {
@@ -1130,17 +1153,22 @@ export default function InstructorDashboard() {
                             <button
                               className="btn ghost small"
                               style={{ padding: '2px 6px', fontSize: '11px', color: 'var(--danger)' }}
-                              onClick={async () => {
-                                if (confirm(`Delete ${file.fileName}?`)) {
-                                  try {
-                                    const filename = file.fileUrl.split('/').pop();
-                                    await api.deleteModuleFile(editingModule._id, filename);
-                                    alert('File deleted!');
-                                    await fetchModules(selectedCourse._id);
-                                  } catch (err) {
-                                    alert('Failed to delete file: ' + err.message);
+                              onClick={() => {
+                                setConfirmModal({
+                                  isOpen: true,
+                                  title: 'Delete File',
+                                  message: `Delete ${file.fileName}?`,
+                                  onConfirm: async () => {
+                                    try {
+                                      const filename = file.fileUrl.split('/').pop();
+                                      await api.deleteModuleFile(editingModule._id, filename);
+                                      setModal({ isOpen: true, title: 'Success', message: 'File deleted!', type: 'success' });
+                                      await fetchModules(selectedCourse._id);
+                                    } catch (err) {
+                                      setModal({ isOpen: true, title: 'Error', message: 'Failed to delete file: ' + err.message, type: 'error' });
+                                    }
                                   }
-                                }
+                                });
                               }}
                             >
                               Delete
@@ -1289,18 +1317,23 @@ export default function InstructorDashboard() {
                                   <button
                                     className="btn ghost small"
                                     style={{ color: 'var(--danger)' }}
-                                    onClick={async () => {
-                                      if (confirm(`Delete ${file.fileName}?`)) {
-                                        try {
-                                          const filename = file.fileUrl.split('/').pop();
-                                          await api.deleteModuleFile(module._id, filename);
-                                          alert('File deleted!');
-                                          await fetchModules(selectedCourse._id);
-                                          setViewingModule(null);
-                                        } catch (err) {
-                                          alert('Failed to delete file: ' + err.message);
+                                    onClick={() => {
+                                      setConfirmModal({
+                                        isOpen: true,
+                                        title: 'Delete File',
+                                        message: `Delete ${file.fileName}?`,
+                                        onConfirm: async () => {
+                                          try {
+                                            const filename = file.fileUrl.split('/').pop();
+                                            await api.deleteModuleFile(module._id, filename);
+                                            setModal({ isOpen: true, title: 'Success', message: 'File deleted!', type: 'success' });
+                                            await fetchModules(selectedCourse._id);
+                                            setViewingModule(null);
+                                          } catch (err) {
+                                            setModal({ isOpen: true, title: 'Error', message: 'Failed to delete file: ' + err.message, type: 'error' });
+                                          }
                                         }
-                                      }
+                                      });
                                     }}
                                   >
                                     🗑️ Delete
@@ -1542,7 +1575,7 @@ export default function InstructorDashboard() {
       setLoading(false);
     } catch (err) {
       console.error('Error fetching activities:', err);
-      alert('Failed to load activities');
+      setModal({ isOpen: true, title: 'Error', message: 'Failed to load activities', type: 'error' });
       setActivities([]);
       setLoading(false);
     }
@@ -1596,26 +1629,29 @@ export default function InstructorDashboard() {
 
   const validateActivityForm = () => {
     if (!activityTitle.trim()) {
-      alert("Activity title is required!");
+      setModal({ isOpen: true, title: 'Validation Error', message: 'Activity title is required!', type: 'error' });
       return false;
     }
     if (!activityDescription.trim()) {
-      alert("Activity description is required!");
+      setModal({ isOpen: true, title: 'Validation Error', message: 'Activity description is required!', type: 'error' });
       return false;
     }
     if (!activityTotalPoints || isNaN(activityTotalPoints) || Number(activityTotalPoints) <= 0) {
-      alert("Please enter a valid total points (greater than 0)!");
+      setModal({ isOpen: true, title: 'Validation Error', message: 'Please enter a valid total points (greater than 0)!', type: 'error' });
       return false;
     }
     if (!activityDueDate) {
-      alert("Due date is required!");
+      setModal({ isOpen: true, title: 'Validation Error', message: 'Due date is required!', type: 'error' });
       return false;
     }
     return true;
   };
 
   const addActivity = async () => {
-    if (!selectedAssessmentCourse) return alert('No course selected');
+    if (!selectedAssessmentCourse) {
+      setModal({ isOpen: true, title: 'Error', message: 'No course selected', type: 'error' });
+      return;
+    }
     if (!validateActivityForm()) return;
 
     try {
@@ -1642,12 +1678,22 @@ export default function InstructorDashboard() {
         instructorName: instructorName
       });
       
-      alert('✅ Activity created successfully!\n📧 Email notifications sent to enrolled students.');
+      setModal({ 
+        isOpen: true, 
+        title: 'Success', 
+        message: '✅ Activity created successfully!\n📧 Email notifications sent to enrolled students.', 
+        type: 'success' 
+      });
       resetActivityForm();
       await fetchActivities(selectedAssessmentCourse._id);
     } catch (err) {
       console.error('Error creating activity:', err);
-      alert('❌ Failed to create activity: ' + err.message);
+      setModal({ 
+        isOpen: true, 
+        title: 'Error', 
+        message: '❌ Failed to create activity: ' + err.message, 
+        type: 'error' 
+      });
       setLoading(false);
     }
   };
@@ -1672,29 +1718,34 @@ export default function InstructorDashboard() {
         isPublished: activityIsPublished
       });
       
-      alert('✅ Activity updated successfully!');
+      setModal({ isOpen: true, title: 'Success', message: '✅ Activity updated successfully!', type: 'success' });
       resetActivityForm();
       await fetchActivities(selectedAssessmentCourse._id);
     } catch (err) {
       console.error('Error updating activity:', err);
-      alert('❌ Failed to update activity: ' + err.message);
+      setModal({ isOpen: true, title: 'Error', message: '❌ Failed to update activity: ' + err.message, type: 'error' });
       setLoading(false);
     }
   };
 
   const deleteActivity = async (activityId) => {
-    if (!confirm('Delete this activity? All student submissions will also be deleted.')) return;
-    
-    try {
-      setLoading(true);
-      await api.deleteActivity(activityId);
-      alert('✅ Activity deleted successfully!');
-      await fetchActivities(selectedAssessmentCourse._id);
-    } catch (err) {
-      console.error('Error deleting activity:', err);
-      alert('❌ Failed to delete activity: ' + err.message);
-      setLoading(false);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Activity',
+      message: 'Delete this activity? All student submissions will also be deleted.',
+      onConfirm: async () => {
+        try {
+          setLoading(true);
+          await api.deleteActivity(activityId);
+          setModal({ isOpen: true, title: 'Success', message: '✅ Activity deleted successfully!', type: 'success' });
+          await fetchActivities(selectedAssessmentCourse._id);
+        } catch (err) {
+          console.error('Error deleting activity:', err);
+          setModal({ isOpen: true, title: 'Error', message: '❌ Failed to delete activity: ' + err.message, type: 'error' });
+          setLoading(false);
+        }
+      }
+    });
   };
 
   const viewSubmissions = async (activity) => {
@@ -2969,12 +3020,19 @@ export default function InstructorDashboard() {
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal({ isOpen: false })}
-        onConfirm={confirmLogout}
-        title="Confirm Logout"
-        message="Are you sure you want to logout?"
-        confirmText="OK"
-        cancelText="Cancel"
-        type="warning"
+        onConfirm={() => {
+          if (confirmModal.onConfirm) {
+            confirmModal.onConfirm();
+          } else {
+            confirmLogout();
+          }
+          setConfirmModal({ isOpen: false });
+        }}
+        title={confirmModal.title || "Confirm Logout"}
+        message={confirmModal.message || "Are you sure you want to logout?"}
+        confirmText={confirmModal.confirmText || "OK"}
+        cancelText={confirmModal.cancelText || "Cancel"}
+        type={confirmModal.type || "warning"}
       />
       
       <aside className="sidebar">

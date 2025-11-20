@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import api from "../../services/api";
+import Modal from "../Modal/Modal";
+import ConfirmModal from "../Modal/ConfirmModal";
 import { logCourseAction, logAdminAction } from "../../utils/logActivity";
 
 export default function CoursesPage() {
@@ -36,6 +38,10 @@ export default function CoursesPage() {
   const [enrollCourseId, setEnrollCourseId] = useState("");
   const [enrollSectionId, setEnrollSectionId] = useState("");
   const [enrollStatus, setEnrollStatus] = useState("enrolled");
+
+  // Modal states
+  const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'success' });
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false });
 
   useEffect(() => {
     fetchAllData();
@@ -90,7 +96,8 @@ export default function CoursesPage() {
 
   const addCourse = async () => {
     if (!courseCode.trim() || !courseName.trim()) {
-      return alert("Please fill in course code and name.");
+      setModal({ isOpen: true, title: 'Validation Error', message: 'Please fill in course code and name.', type: 'error' });
+      return;
     }
 
     try {
@@ -106,27 +113,20 @@ export default function CoursesPage() {
 
       const response = await api.createCourse(courseData);
       if (response.success) {
-        // Log course creation
-        await logCourseAction(
-          `Created course ${courseCode}`,
-          'CREATE',
-          { _id: response.data._id, title: courseName },
-          `Created new course: ${courseName} (${courseCode})`
-        );
-        
-        alert('Course created successfully!');
+        setModal({ isOpen: true, title: 'Success', message: 'Course created successfully!', type: 'success' });
         resetCourseForm();
         fetchAllData();
       }
     } catch (err) {
       console.error('Error creating course:', err);
-      alert(err.message || 'Failed to create course');
+      setModal({ isOpen: true, title: 'Error', message: err.message || 'Failed to create course', type: 'error' });
     }
   };
 
   const updateCourse = async () => {
     if (!editingCourse || !courseCode.trim() || !courseName.trim()) {
-      return alert("Please fill in required fields.");
+      setModal({ isOpen: true, title: 'Validation Error', message: 'Please fill in required fields.', type: 'error' });
+      return;
     }
 
     try {
@@ -149,37 +149,42 @@ export default function CoursesPage() {
           `Updated course: ${courseName} (${courseCode})`
         );
         
-        alert('Course updated successfully!');
+        setModal({ isOpen: true, title: 'Success', message: 'Course updated successfully!', type: 'success' });
         resetCourseForm();
         fetchAllData();
       }
     } catch (err) {
       console.error('Error updating course:', err);
-      alert(err.message || 'Failed to update course');
+      setModal({ isOpen: true, title: 'Error', message: err.message || 'Failed to update course', type: 'error' });
     }
   };
 
   const deleteCourse = async (course) => {
-    if (!confirm(`Delete course ${course.courseName}?`)) return;
-
-    try {
-      const response = await api.deleteCourse(course._id);
-      if (response.success) {
-        // Log course deletion
-        await logCourseAction(
-          `Deleted course ${course.courseCode}`,
-          'DELETE',
-          course,
-          `Deleted course: ${course.courseName} (${course.courseCode})`
-        );
-        
-        alert('Course deleted successfully!');
-        fetchAllData();
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Course',
+      message: `Delete course ${course.courseName}?`,
+      onConfirm: async () => {
+        try {
+          const response = await api.deleteCourse(course._id);
+          if (response.success) {
+            // Log course deletion
+            await logCourseAction(
+              `Deleted course ${course.courseCode}`,
+              'DELETE',
+              course,
+              `Deleted course: ${course.courseName} (${course.courseCode})`
+            );
+            
+            setModal({ isOpen: true, title: 'Success', message: 'Course deleted successfully!', type: 'success' });
+            fetchAllData();
+          }
+        } catch (err) {
+          console.error('Error deleting course:', err);
+          setModal({ isOpen: true, title: 'Error', message: err.message || 'Failed to delete course', type: 'error' });
+        }
       }
-    } catch (err) {
-      console.error('Error deleting course:', err);
-      alert(err.message || 'Failed to delete course');
-    }
+    });
   };
 
   const startEditCourse = (course) => {
@@ -224,7 +229,8 @@ export default function CoursesPage() {
 
   const addOrUpdateSection = async () => {
     if (!sectionName.trim() || !selectedCourseForSection) {
-      return alert("Please fill in section name.");
+      setModal({ isOpen: true, title: 'Validation Error', message: 'Please fill in section name.', type: 'error' });
+      return;
     }
 
     try {
@@ -239,7 +245,7 @@ export default function CoursesPage() {
       if (editingSection) {
         const response = await api.updateSection(selectedCourseForSection._id, editingSection._id, sectionData);
         if (response.success) {
-          alert('Section updated successfully!');
+          setModal({ isOpen: true, title: 'Success', message: 'Section updated successfully!', type: 'success' });
           setShowSectionForm(false);
           setEditingSection(null);
           fetchAllData();
@@ -247,35 +253,41 @@ export default function CoursesPage() {
       } else {
         const response = await api.createSection(selectedCourseForSection._id, sectionData);
         if (response.success) {
-          alert('Section created successfully!');
+          setModal({ isOpen: true, title: 'Success', message: 'Section created successfully!', type: 'success' });
           setShowSectionForm(false);
           fetchAllData();
         }
       }
     } catch (err) {
       console.error('Error saving section:', err);
-      alert(err.message || 'Failed to save section');
+      setModal({ isOpen: true, title: 'Error', message: err.message || 'Failed to save section', type: 'error' });
     }
   };
 
   const deleteSection = async (courseId, sectionId) => {
-    if (!confirm("Delete this section?")) return;
-
-    try {
-      const response = await api.deleteSection(courseId, sectionId);
-      if (response.success) {
-        alert('Section deleted successfully!');
-        fetchAllData();
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Section',
+      message: 'Delete this section?',
+      onConfirm: async () => {
+        try {
+          const response = await api.deleteSection(courseId, sectionId);
+          if (response.success) {
+            setModal({ isOpen: true, title: 'Success', message: 'Section deleted successfully!', type: 'success' });
+            fetchAllData();
+          }
+        } catch (err) {
+          console.error('Error deleting section:', err);
+          setModal({ isOpen: true, title: 'Error', message: err.message || 'Failed to delete section', type: 'error' });
+        }
       }
-    } catch (err) {
-      console.error('Error deleting section:', err);
-      alert(err.message || 'Failed to delete section');
-    }
+    });
   };
 
   const enrollStudent = async () => {
     if (!enrollStudentId || !enrollCourseId || !enrollSectionId) {
-      return alert("Please select student, course, and section.");
+      setModal({ isOpen: true, title: 'Validation Error', message: 'Please select student, course, and section.', type: 'error' });
+      return;
     }
 
     try {
@@ -300,7 +312,7 @@ export default function CoursesPage() {
           { studentId: enrollStudentId, courseId: enrollCourseId, sectionId: enrollSectionId }
         );
         
-        alert('Student enrolled successfully!');
+        setModal({ isOpen: true, title: 'Success', message: 'Student enrolled successfully!', type: 'success' });
         setShowEnrollmentForm(false);
         setEnrollStudentId("");
         setEnrollCourseId("");
@@ -310,34 +322,39 @@ export default function CoursesPage() {
       }
     } catch (err) {
       console.error('Error enrolling student:', err);
-      alert(err.message || 'Failed to enroll student');
+      setModal({ isOpen: true, title: 'Error', message: err.message || 'Failed to enroll student', type: 'error' });
     }
   };
 
   const deleteEnrollment = async (enrollmentId) => {
-    if (!confirm("Remove this enrollment?")) return;
-
-    try {
-      const response = await api.deleteEnrollment(enrollmentId);
-      if (response.success) {
-        // Log enrollment deletion
-        const enrollment = enrollments.find(e => e._id === enrollmentId);
-        await logAdminAction(
-          `Removed enrollment`,
-          'DELETE',
-          'enrollment',
-          enrollmentId,
-          `Removed enrollment for ${enrollment?.studentId || 'student'}`,
-          { enrollmentId }
-        );
-        
-        alert('Enrollment removed successfully!');
-        fetchAllData();
+    setConfirmModal({
+      isOpen: true,
+      title: 'Remove Enrollment',
+      message: 'Remove this enrollment?',
+      onConfirm: async () => {
+        try {
+          const response = await api.deleteEnrollment(enrollmentId);
+          if (response.success) {
+            // Log enrollment deletion
+            const enrollment = enrollments.find(e => e._id === enrollmentId);
+            await logAdminAction(
+              `Removed enrollment`,
+              'DELETE',
+              'enrollment',
+              enrollmentId,
+              `Removed enrollment for ${enrollment?.studentId || 'student'}`,
+              { enrollmentId }
+            );
+            
+            setModal({ isOpen: true, title: 'Success', message: 'Enrollment removed successfully!', type: 'success' });
+            fetchAllData();
+          }
+        } catch (err) {
+          console.error('Error deleting enrollment:', err);
+          setModal({ isOpen: true, title: 'Error', message: err.message || 'Failed to remove enrollment', type: 'error' });
+        }
       }
-    } catch (err) {
-      console.error('Error deleting enrollment:', err);
-      alert(err.message || 'Failed to remove enrollment');
-    }
+    });
   };
 
   if (loading) {
@@ -891,6 +908,24 @@ export default function CoursesPage() {
           )}
         </>
       )}
+
+      {/* Modal for messages */}
+      <Modal 
+        isOpen={modal.isOpen}
+        onClose={() => setModal({ isOpen: false, title: '', message: '', type: 'success' })}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+      />
+
+      {/* ConfirmModal for confirmations */}
+      <ConfirmModal 
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: null })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+      />
     </div>
   );
 }

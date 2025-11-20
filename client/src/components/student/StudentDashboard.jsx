@@ -4,6 +4,7 @@ import api from "../../services/api";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import Modal from "../Modal/Modal";
 import ConfirmModal from "../Modal/ConfirmModal";
+import AnnouncementCard from "../common/AnnouncementCard";
 import "./student.css";
 
 export default function StudentDashboard() {
@@ -71,7 +72,7 @@ export default function StudentDashboard() {
   
   // Modal state
   const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'success' });
-  const [confirmModal, setConfirmModal] = useState({ isOpen: false });
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
 
   useEffect(() => {
     loadUserData();
@@ -195,7 +196,7 @@ export default function StudentDashboard() {
       setLoading(false);
     } catch (err) {
       console.error('Error fetching modules:', err);
-      alert('Failed to load course modules');
+      setModal({ isOpen: true, title: 'Error', message: 'Failed to load course modules', type: 'error' });
       setLoading(false);
     }
   };
@@ -208,7 +209,7 @@ export default function StudentDashboard() {
       setLoading(false);
     } catch (err) {
       console.error('Error fetching lessons:', err);
-      alert('Failed to load module lessons');
+      setModal({ isOpen: true, title: 'Error', message: 'Failed to load module lessons', type: 'error' });
       setLoading(false);
     }
   };
@@ -328,7 +329,12 @@ export default function StudentDashboard() {
         } catch (uploadErr) {
           console.error('❌ Error uploading file:', uploadErr);
           setLoading(false);
-          alert('⚠️ File upload failed: ' + uploadErr.message + '\n\nPlease try again or submit without a file.');
+          setModal({ 
+            isOpen: true, 
+            title: 'File Upload Failed', 
+            message: '⚠️ File upload failed: ' + uploadErr.message + '\n\nPlease try again or submit without a file.', 
+            type: 'error' 
+          });
           return; // Stop submission if file upload fails
         }
       }
@@ -413,6 +419,12 @@ export default function StudentDashboard() {
           <h2>Welcome, {currentUser?.firstName || currentUser?.email} 👋</h2>
           <p className="muted small">Here's an overview of your learning progress</p>
         </div>
+
+        {/* Announcements */}
+        <AnnouncementCard 
+          userRole="student" 
+          userEnrollments={courses.map(c => ({ courseId: c._id, _id: c._id }))}
+        />
 
         {/* Statistics Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
@@ -1515,7 +1527,7 @@ export default function StudentDashboard() {
         return orderId;
       }).catch((error) => {
         console.error('Error creating PayPal order:', error);
-        alert('Failed to create PayPal order. Please try again.');
+        setModal({ isOpen: true, title: 'Error', message: 'Failed to create PayPal order. Please try again.', type: 'error' });
         throw error;
       });
     };
@@ -1589,16 +1601,26 @@ export default function StudentDashboard() {
           setShowPayPalButtons(false);
           setPendingPaymentId(null);
           
-          alert(`✅ Payment Successful!\n\nTransaction ID: ${details.id}\nAmount: $${paymentAmount}\nThank you, ${details.payer.name.given_name}!\n\nYour payment has been recorded in the system.`);
+          setModal({ 
+            isOpen: true, 
+            title: 'Payment Successful', 
+            message: `✅ Payment Successful!\n\nTransaction ID: ${details.id}\nAmount: $${paymentAmount}\nThank you, ${details.payer.name.given_name}!\n\nYour payment has been recorded in the system.`, 
+            type: 'success' 
+          });
         } catch (error) {
           console.error('Error updating payment:', error);
-          alert(`⚠️ Payment completed but there was an error recording it:\n${error.message}\n\nTransaction ID: ${details.id}\n\nPlease contact support with this transaction ID.`);
+          setModal({ 
+            isOpen: true, 
+            title: 'Payment Warning', 
+            message: `⚠️ Payment completed but there was an error recording it:\n${error.message}\n\nTransaction ID: ${details.id}\n\nPlease contact support with this transaction ID.`, 
+            type: 'error' 
+          });
           setShowPayPalButtons(false);
           setPendingPaymentId(null);
         }
       }).catch((error) => {
         console.error('PayPal capture error:', error);
-        alert('Failed to capture payment. Please try again.');
+        setModal({ isOpen: true, title: 'Error', message: 'Failed to capture payment. Please try again.', type: 'error' });
         setShowPayPalButtons(false);
       });
     };
@@ -1616,7 +1638,12 @@ export default function StudentDashboard() {
         }
       }
       
-      alert('❌ Payment Error\n\nSomething went wrong with PayPal. Please try again or contact support if the problem persists.');
+      setModal({ 
+        isOpen: true, 
+        title: 'Payment Error', 
+        message: '❌ Payment Error\n\nSomething went wrong with PayPal. Please try again or contact support if the problem persists.', 
+        type: 'error' 
+      });
       setShowPayPalButtons(false);
       setPendingPaymentId(null);
     };
@@ -1634,7 +1661,7 @@ export default function StudentDashboard() {
         }
       }
       
-      alert('Payment was cancelled. No charges were made.');
+      setModal({ isOpen: true, title: 'Payment Cancelled', message: 'Payment was cancelled. No charges were made.', type: 'error' });
       setShowPayPalButtons(false);
       setPendingPaymentId(null);
     };
@@ -1730,11 +1757,16 @@ export default function StudentDashboard() {
                   <button 
                     type="button"
                     onClick={() => {
-                      if (window.confirm('Are you sure you want to cancel this payment request?')) {
-                        setPendingPaymentId(null);
-                        setPaymentAmount('');
-                        setPaymentDescription('Tuition Fee');
-                      }
+                      setConfirmModal({
+                        isOpen: true,
+                        title: 'Cancel Payment Request',
+                        message: 'Are you sure you want to cancel this payment request?',
+                        onConfirm: () => {
+                          setPendingPaymentId(null);
+                          setPaymentAmount('');
+                          setPaymentDescription('Tuition Fee');
+                        }
+                      });
                     }}
                     className="btn-secondary"
                     style={{ width: '100%', marginTop: '10px' }}
@@ -1909,10 +1941,10 @@ export default function StudentDashboard() {
       
       <ConfirmModal
         isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal({ isOpen: false })}
-        onConfirm={confirmLogout}
-        title="Confirm Logout"
-        message="Are you sure you want to logout?"
+        onClose={() => setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: null })}
+        onConfirm={confirmModal.onConfirm || confirmLogout}
+        title={confirmModal.title || "Confirm Logout"}
+        message={confirmModal.message || "Are you sure you want to logout?"}
         confirmText="OK"
         cancelText="Cancel"
         type="warning"

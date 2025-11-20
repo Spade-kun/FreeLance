@@ -6,15 +6,20 @@ import Lesson from '../models/Lesson.js';
 
 export const getAnnouncements = async (req, res) => {
   try {
-    const { targetAudience, courseId } = req.query;
-    const filter = { isActive: true };
+    const { targetAudience, courseId, isActive } = req.query;
+    const filter = {};
     
+    // Only filter by isActive if explicitly provided, otherwise return all
+    if (isActive !== undefined) filter.isActive = isActive === 'true';
     if (targetAudience) filter.targetAudience = targetAudience;
     if (courseId) filter.courseId = courseId;
     
     const announcements = await Announcement.find(filter).sort({ publishDate: -1 });
+    console.log('📢 Fetching announcements with filter:', filter);
+    console.log('📢 Found announcements:', announcements.length);
     res.status(200).json({ success: true, data: announcements });
   } catch (error) {
+    console.error('📢 Error fetching announcements:', error);
     res.status(500).json({ message: error.message });
   }
 };
