@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import './admin.css';
+import Modal from '../Modal/Modal';
 
 export default function ActivityLogsPage() {
   const [logs, setLogs] = useState([]);
@@ -22,6 +23,7 @@ export default function ActivityLogsPage() {
     total: 0
   });
   const [stats, setStats] = useState(null);
+  const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'success' });
 
   useEffect(() => {
     fetchLogs();
@@ -153,6 +155,128 @@ export default function ActivityLogsPage() {
     return colors[status] || '#6b7280';
   };
 
+  const downloadLogsPdf = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch ALL filtered logs (no pagination limit for export)
+      const queryParams = {};
+      if (filters.userRole) queryParams.userRole = filters.userRole;
+      if (filters.actionType) queryParams.actionType = filters.actionType;
+      if (filters.resource) queryParams.resource = filters.resource;
+      if (filters.status) queryParams.status = filters.status;
+      if (filters.startDate) queryParams.startDate = filters.startDate;
+      if (filters.endDate) queryParams.endDate = filters.endDate;
+      queryParams.page = 1;
+      queryParams.limit = 10000; // Get all filtered logs for export
+      queryParams.sortBy = 'createdAt';
+      queryParams.sortOrder = 'desc';
+
+      const response = await api.getLogs(queryParams);
+      const exportLogs = response.success ? (response.data || []) : [];
+      
+      setLoading(false);
+
+      if (exportLogs.length === 0) {
+        setModal({ isOpen: true, title: 'No Data', message: 'No activity logs match the current filters.', type: 'error' });
+        return;
+      }
+
+      // Build filter summary
+      const filterSummary = [];
+      if (filters.userRole) filterSummary.push(`Role: ${filters.userRole}`);
+      if (filters.actionType) filterSummary.push(`Action: ${filters.actionType}`);
+      if (filters.resource) filterSummary.push(`Resource: ${filters.resource}`);
+      if (filters.status) filterSummary.push(`Status: ${filters.status}`);
+      if (filters.startDate) filterSummary.push(`From: ${filters.startDate}`);
+      if (filters.endDate) filterSummary.push(`To: ${filters.endDate}`);
+      const filterText = filterSummary.length > 0 ? filterSummary.join(' | ') : 'All Logs';
+
+      // Build printable HTML
+      const styles = `
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; color: #111 }
+          h1 { font-size: 20px; margin-bottom: 4px }
+          .meta { margin-bottom: 4px; font-size: 12px; color: #374151 }
+          .filters { margin-bottom: 12px; font-size: 11px; color: #6b7280; font-style: italic }
+          table { width: 100%; border-collapse: collapse; margin-top: 12px }
+          th, td { border: 1px solid #ddd; padding: 6px; font-size: 11px; }
+          th { background: #f3f4f6; text-align: left; font-weight: 600 }
+          @media print {
+            body { padding: 10px }
+            table { page-break-inside: auto }
+            tr { page-break-inside: avoid; page-break-after: auto }
+          }
+        </style>
+      `;
+
+      const header = `
+        <div>
+          <h1>Activity Logs Export</h1>
+          <div class="meta">Exported: ${new Date().toLocaleString()} | Total Records: ${exportLogs.length}</div>
+          <div class="filters">Filters Applied: ${filterText}</div>
+        </div>
+      `;
+
+      const rows = exportLogs.map(l => `
+        <tr>
+          <td>${formatDate(l.createdAt)}</td>
+          <td>${(l.userEmail || '').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</td>
+          <td>${(l.userRole || '').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</td>
+          <td>${(l.action || '').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</td>
+          <td>${(l.actionType || '').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</td>
+          <td>${(l.resource || '').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</td>
+          <td>${(l.status || '').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</td>
+          <td>${(l.details || '-').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</td>
+        </tr>
+      `).join('');
+
+      const table = `
+        <table>
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>User Email</th>
+              <th>Role</th>
+              <th>Action</th>
+              <th>Type</th>
+              <th>Resource</th>
+              <th>Status</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      `;
+
+      const newWindow = window.open('', '_blank');
+      if (!newWindow) {
+        setModal({ isOpen: true, title: 'Error', message: 'Popup blocked. Please allow popups for this site to download the PDF.', type: 'error' });
+        return;
+      }
+
+      newWindow.document.write(`<!doctype html><html><head><title>Activity Logs - ${filterText}</title>${styles}</head><body>${header}${table}</body></html>`);
+      newWindow.document.close();
+      
+      // Give the new window a moment to render before printing
+      setTimeout(() => {
+        try {
+          newWindow.focus();
+          newWindow.print();
+        } catch (err) {
+          console.error('Print failed:', err);
+          setModal({ isOpen: true, title: 'Error', message: 'Failed to open print dialog. Try using your browser print/save options.', type: 'error' });
+        }
+      }, 500);
+    } catch (err) {
+      console.error('Error exporting logs:', err);
+      setLoading(false);
+      setModal({ isOpen: true, title: 'Error', message: `Failed to export logs: ${err.message}`, type: 'error' });
+    }
+  };
+
   if (loading && logs.length === 0) {
     return (
       <div className="card">
@@ -278,6 +402,9 @@ export default function ActivityLogsPage() {
           </button>
           <button onClick={handleResetFilters} className="btn ghost small">
             Reset
+          </button>
+          <button onClick={downloadLogsPdf} className="btn ghost small" disabled={loading}>
+            📄 Download PDF
           </button>
         </div>
       </div>
@@ -413,6 +540,14 @@ export default function ActivityLogsPage() {
           Refresh Logs
         </button>
       </div>
+
+      <Modal 
+        isOpen={modal.isOpen} 
+        onClose={() => setModal({ ...modal, isOpen: false })} 
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+      />
     </div>
   );
 }
